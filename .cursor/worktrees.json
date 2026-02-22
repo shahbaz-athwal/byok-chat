@@ -1,0 +1,8 @@
+{
+  "setup-worktree": [
+    "bun install",
+    "cp $ROOT_WORKTREE_PATH/.env.local .env.local",
+    "echo '' >> AGENTS.md && echo '> **Note**: The Convex dev server (`npx convex dev`) is NOT running in this worktree. Do not start it here as it may conflict with the main worktree.' >> AGENTS.md",
+    "git update-index --assume-unchanged AGENTS.md"
+  ]
+}
