@@ -1,12 +1,14 @@
+import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react";
 import { ConvexQueryClient } from "@convex-dev/react-query";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "@tanstack/react-router";
-import { ConvexProvider, ConvexReactClient } from "convex/react";
+import { ConvexReactClient } from "convex/react";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { ThemeProvider } from "./hooks/use-theme";
 import { getRouter } from "./router";
 import "./styles/globals.css";
+import { authClient } from "@/lib/auth-client";
 
 const convexUrl = import.meta.env.VITE_CONVEX_URL;
 
@@ -14,7 +16,9 @@ if (!convexUrl) {
   throw new Error("Missing VITE_CONVEX_URL");
 }
 
-const convex = new ConvexReactClient(convexUrl);
+const convex = new ConvexReactClient(convexUrl, {
+  expectAuth: true,
+});
 const convexQueryClient = new ConvexQueryClient(convex);
 
 const queryClient = new QueryClient({
@@ -43,11 +47,11 @@ if (!rootElement) {
 createRoot(rootElement).render(
   <StrictMode>
     <ThemeProvider defaultTheme="dark" storageKey="theme">
-      <ConvexProvider client={convex}>
+      <ConvexBetterAuthProvider authClient={authClient} client={convex}>
         <QueryClientProvider client={queryClient}>
           <RouterProvider router={router} />
         </QueryClientProvider>
-      </ConvexProvider>
+      </ConvexBetterAuthProvider>
     </ThemeProvider>
-  </StrictMode>,
+  </StrictMode>
 );
