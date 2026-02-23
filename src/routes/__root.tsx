@@ -1,21 +1,36 @@
-import { createRootRouteWithContext, Outlet } from "@tanstack/react-router";
-import { ThemeToggle } from "@/components/theme-toggle";
+import {
+  createRootRouteWithContext,
+  Outlet,
+  useLocation,
+} from "@tanstack/react-router";
+import { AppSidebar } from "@/components/app-sidebar";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import type { RouterContext } from "@/router";
+
+const SIDEBAR_EXCLUDED_PATHS = ["/auth"];
 
 export const Route = createRootRouteWithContext<RouterContext>()({
   component: RootComponent,
 });
 
 function RootComponent() {
-  return (
-    <div className="min-h-svh bg-background text-foreground">
-      <header className="flex items-center justify-between border-b px-4 py-2">
-        <h1 className="font-semibold text-lg">byok-chat</h1>
-        <ThemeToggle />
-      </header>
-      <main>
+  const { pathname } = useLocation();
+  const showSidebar = !SIDEBAR_EXCLUDED_PATHS.includes(pathname);
+
+  if (!showSidebar) {
+    return (
+      <div className="min-h-svh bg-background text-foreground">
         <Outlet />
-      </main>
-    </div>
+      </div>
+    );
+  }
+
+  return (
+    <SidebarProvider>
+      <AppSidebar />
+      <SidebarInset>
+        <Outlet />
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
