@@ -1,9 +1,3 @@
-import { defineSchema, defineTable } from "convex/server";
-import { v } from "convex/values";
+import { defineSchema } from "convex/server";
 
-export default defineSchema({
-  messages: defineTable({
-    role: v.union(v.literal("user"), v.literal("assistant")),
-    content: v.string(),
-  }),
-});
+export default defineSchema({});
