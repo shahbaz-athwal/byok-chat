@@ -73,7 +73,7 @@ export function SignupForm({ onSuccess }: { onSuccess?: () => void }) {
   };
 
   return (
-    <Form ref={formRef} onSubmit={handleSubmit}>
+    <Form onSubmit={handleSubmit} ref={formRef}>
       <Field>
         <FieldLabel>Name</FieldLabel>
         <Input
