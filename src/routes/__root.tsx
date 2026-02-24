@@ -4,7 +4,11 @@ import {
   useLocation,
 } from "@tanstack/react-router";
 import { AppSidebar } from "@/components/app-sidebar";
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
 import { threadsListQuery } from "@/queries/threads";
 import type { RouterContext } from "@/router";
 
@@ -37,6 +41,7 @@ function RootComponent() {
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset className="h-svh min-h-0 overflow-hidden">
+        <SidebarTrigger className="absolute top-2 left-2 z-30" />
         <Outlet />
       </SidebarInset>
     </SidebarProvider>

@@ -1,12 +1,29 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
 import {
   ChatComposer,
   ChatComposerProvider,
   type ChatComposerSubmitPayload,
 } from "@/components/chat/chat-composer";
-import { DEFAULT_MODEL_BY_PROVIDER, DEFAULT_PROVIDER } from "@/lib/chat-models";
+import {
+  DEFAULT_MODEL_BY_PROVIDER,
+  DEFAULT_PROVIDER,
+  type Provider,
+} from "@/lib/chat-models";
 import { useStartThreadMutation } from "@/mutations/thread";
 import type { Id } from "../../convex/_generated/dataModel";
+
+const COMMON_QUESTIONS = [
+  "How does AI work?",
+  "Are black holes real?",
+  'How many Rs are in the word "strawberry"?',
+  "What is the meaning of life?",
+];
+
+interface ChatModelSelection {
+  modelId: string;
+  provider: Provider;
+}
 
 export const Route = createFileRoute("/")({
   component: HomePage,
@@ -15,6 +32,10 @@ export const Route = createFileRoute("/")({
 function HomePage() {
   const navigate = Route.useNavigate();
   const startThreadMutation = useStartThreadMutation();
+  const [selectedProvider, setSelectedProvider] = useState(DEFAULT_PROVIDER);
+  const [selectedModelId, setSelectedModelId] = useState(
+    DEFAULT_MODEL_BY_PROVIDER[DEFAULT_PROVIDER]
+  );
 
   async function handleStartChat({
     prompt: message,
@@ -33,20 +54,57 @@ function HomePage() {
     });
   }
 
+  async function handleCommonQuestionSelect(prompt: string) {
+    await handleStartChat({
+      modelId: selectedModelId,
+      prompt,
+      provider: selectedProvider,
+    });
+  }
+
+  function handleModelChange({ modelId, provider }: ChatModelSelection) {
+    setSelectedModelId(modelId);
+    setSelectedProvider(provider);
+    return Promise.resolve();
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {/* TODO: add a welcome message and common questions  to start a chat*/}
       <div className="flex-1 px-4 py-6 sm:px-6">
-        <div className="mx-auto flex h-full w-full max-w-4xl items-center justify-center">
-          <h1 className="text-muted-foreground text-sm">Start a new chat</h1>
+        <div className="mx-auto flex h-full w-full max-w-2xl flex-col items-start justify-center">
+          <div className="mb-6">
+            <h1 className="font-medium text-foreground text-lg tracking-tight sm:text-xl">
+              Welcome to BYOK Chat
+            </h1>
+            <p className="mt-1.5 text-muted-foreground text-xs">
+              Ask anything, or start with one of these common questions.
+            </p>
+          </div>
+          <ul className="w-full divide-y divide-border/60">
+            {COMMON_QUESTIONS.map((question) => (
+              <li key={question}>
+                <button
+                  className="w-full py-2.5 text-left text-foreground/80 text-sm transition-colors hover:bg-muted/30 hover:text-foreground sm:text-base"
+                  disabled={startThreadMutation.isPending}
+                  onClick={async () => {
+                    await handleCommonQuestionSelect(question);
+                  }}
+                  type="button"
+                >
+                  {question}
+                </button>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
       <ChatComposerProvider
-        initialModelId={DEFAULT_MODEL_BY_PROVIDER[DEFAULT_PROVIDER]}
-        initialProvider={DEFAULT_PROVIDER}
+        initialModelId={selectedModelId}
+        initialProvider={selectedProvider}
         isSubmitting={startThreadMutation.isPending}
         maxHeightPx={280}
         maxLength={16_000}
+        onModelChange={handleModelChange}
         onSubmit={handleStartChat}
       >
         <ChatComposer />
