@@ -1,3 +1,5 @@
+import { useLocation, useNavigate } from "@tanstack/react-router";
+import { useQuery } from "convex/react";
 import { MessageSquareIcon, SquarePenIcon } from "lucide-react";
 import { Suspense } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -16,17 +18,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { authClient } from "@/lib/auth-client";
-
-const mockChats = [
-  { id: "1", title: "How to deploy a Vite app" },
-  { id: "2", title: "Explain React Server Components" },
-  { id: "3", title: "Tailwind v4 migration guide" },
-  { id: "4", title: "Best practices for auth" },
-  { id: "5", title: "Building a REST API with Convex" },
-  { id: "6", title: "TypeScript generics deep dive" },
-  { id: "7", title: "CSS Grid vs Flexbox" },
-  { id: "8", title: "Optimizing database queries" },
-];
+import { api } from "../../convex/_generated/api";
 
 function SidebarFooterUser() {
   const { data: session } = authClient.useSession();
@@ -39,7 +31,7 @@ function SidebarFooterUser() {
   const initials = name
     ? name
         .split(" ")
-        .map((n) => n[0])
+        .map((n: string) => n[0])
         .join("")
         .toUpperCase()
         .slice(0, 2)
@@ -59,11 +51,18 @@ function SidebarFooterUser() {
 }
 
 export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const chats = useQuery(api.threads.list, {
+    paginationOpts: { cursor: null, numItems: 50 },
+  });
+  const chatItems = chats?.page ?? [];
+
   return (
     <Sidebar {...props}>
       <SidebarHeader>
         <span className="px-2 font-semibold text-base">byok-chat</span>
-        <Button className="mt-2 w-full">
+        <Button className="mt-2 w-full" onClick={() => navigate({ to: "/" })}>
           <SquarePenIcon />
           New Chat
         </Button>
@@ -74,11 +73,20 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
           <SidebarGroupLabel>Chats</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {mockChats.map((chat) => (
-                <SidebarMenuItem key={chat.id}>
-                  <SidebarMenuButton tooltip={chat.title}>
+              {chatItems.map((chat) => (
+                <SidebarMenuItem key={chat._id}>
+                  <SidebarMenuButton
+                    isActive={pathname === `/chat/${chat._id}`}
+                    onClick={() =>
+                      navigate({
+                        params: { chatId: chat._id },
+                        to: "/chat/$chatId",
+                      })
+                    }
+                    tooltip={chat.title ?? "Untitled chat"}
+                  >
                     <MessageSquareIcon />
-                    <span>{chat.title}</span>
+                    <span>{chat.title ?? "Untitled chat"}</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}

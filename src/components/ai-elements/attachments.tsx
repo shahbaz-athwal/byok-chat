@@ -14,10 +14,10 @@ import type { ComponentProps, HTMLAttributes, ReactNode } from "react";
 import { createContext, useCallback, useContext, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/components/ui/hover-card";
+  PreviewCard,
+  PreviewCardPopup,
+  PreviewCardTrigger,
+} from "@/components/ui/preview-card";
 import { cn } from "@/lib/utils";
 
 // ============================================================================
@@ -369,26 +369,27 @@ export const AttachmentRemove = ({
 // AttachmentHoverCard - Hover preview
 // ============================================================================
 
-export type AttachmentHoverCardProps = ComponentProps<typeof HoverCard>;
+export type AttachmentHoverCardProps = ComponentProps<typeof PreviewCard> & {
+  openDelay?: number;
+  closeDelay?: number;
+};
 
 export const AttachmentHoverCard = ({
-  openDelay = 0,
-  closeDelay = 0,
+  openDelay: _openDelay = 0,
+  closeDelay: _closeDelay = 0,
   ...props
-}: AttachmentHoverCardProps) => (
-  <HoverCard closeDelay={closeDelay} openDelay={openDelay} {...props} />
-);
+}: AttachmentHoverCardProps) => <PreviewCard {...props} />;
 
 export type AttachmentHoverCardTriggerProps = ComponentProps<
-  typeof HoverCardTrigger
+  typeof PreviewCardTrigger
 >;
 
 export const AttachmentHoverCardTrigger = (
   props: AttachmentHoverCardTriggerProps
-) => <HoverCardTrigger {...props} />;
+) => <PreviewCardTrigger {...props} />;
 
 export type AttachmentHoverCardContentProps = ComponentProps<
-  typeof HoverCardContent
+  typeof PreviewCardPopup
 >;
 
 export const AttachmentHoverCardContent = ({
@@ -396,7 +397,7 @@ export const AttachmentHoverCardContent = ({
   className,
   ...props
 }: AttachmentHoverCardContentProps) => (
-  <HoverCardContent
+  <PreviewCardPopup
     align={align}
     className={cn("w-auto p-2", className)}
     {...props}

@@ -534,12 +534,9 @@ export type CodeBlockLanguageSelectorContentProps = ComponentProps<
   typeof SelectContent
 >;
 
-export const CodeBlockLanguageSelectorContent = ({
-  align = "end",
-  ...props
-}: CodeBlockLanguageSelectorContentProps) => (
-  <SelectContent align={align} {...props} />
-);
+export const CodeBlockLanguageSelectorContent = (
+  props: CodeBlockLanguageSelectorContentProps
+) => <SelectContent {...props} />;
 
 export type CodeBlockLanguageSelectorItemProps = ComponentProps<
   typeof SelectItem
