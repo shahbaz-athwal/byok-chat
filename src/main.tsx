@@ -5,6 +5,7 @@ import { RouterProvider } from "@tanstack/react-router";
 import { ConvexReactClient } from "convex/react";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { ToastProvider } from "@/components/ui/toast";
 import { ThemeProvider } from "./hooks/use-theme";
 import { getRouter } from "./router";
 import "./styles/globals.css";
@@ -44,29 +45,16 @@ if (!rootElement) {
   throw new Error("Root element not found");
 }
 
-let initialToken: string | null = null;
-try {
-  const cookie = JSON.parse(
-    localStorage.getItem("better-auth_cookie") ?? "null"
-  ) as Record<string, { value: string }>;
-  initialToken = cookie["better-auth.convex_jwt"]?.value ?? null;
-} catch (_) {
-  initialToken = null;
-}
-
-console.log(initialToken);
 createRoot(rootElement).render(
   <StrictMode>
     <ThemeProvider defaultTheme="dark" storageKey="theme">
-      <ConvexBetterAuthProvider
-        authClient={authClient}
-        client={convex}
-        initialToken={initialToken}
-      >
-        <QueryClientProvider client={queryClient}>
-          <RouterProvider router={router} />
-        </QueryClientProvider>
-      </ConvexBetterAuthProvider>
+      <ToastProvider>
+        <ConvexBetterAuthProvider authClient={authClient} client={convex}>
+          <QueryClientProvider client={queryClient}>
+            <RouterProvider router={router} />
+          </QueryClientProvider>
+        </ConvexBetterAuthProvider>
+      </ToastProvider>
     </ThemeProvider>
   </StrictMode>
 );

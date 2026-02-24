@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link, useNavigate } from "@tanstack/react-router";
-import { SquarePenIcon } from "lucide-react";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { Suspense } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -18,7 +17,6 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { authClient } from "@/lib/auth-client";
-import { cn } from "@/lib/utils";
 import { threadsListQuery } from "@/queries/threads";
 
 function SidebarFooterUser() {
@@ -53,6 +51,7 @@ function SidebarFooterUser() {
 
 export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   const navigate = useNavigate();
+  const params = useParams({ strict: false });
   const { data: chats } = useQuery(threadsListQuery());
   const chatItems = chats?.page ?? [];
 
@@ -61,7 +60,6 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
       <SidebarHeader>
         <span className="px-2 font-semibold text-base">byok-chat</span>
         <Button className="mt-2 w-full" onClick={() => navigate({ to: "/" })}>
-          <SquarePenIcon />
           New Chat
         </Button>
       </SidebarHeader>
@@ -74,27 +72,13 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
               {chatItems.map((chat) => (
                 <SidebarMenuItem key={chat._id}>
                   <SidebarMenuButton
+                    isActive={params.chatId === chat._id}
                     render={(props) => (
-                      <Button
+                      <Link
                         {...props}
-                        className={cn("w-full justify-start", props.className)}
-                        render={(buttonProps) => (
-                          <Link
-                            {...buttonProps}
-                            activeOptions={{ exact: true }}
-                            activeProps={{
-                              className:
-                                "bg-sidebar-accent text-sidebar-accent-foreground",
-                            }}
-                            className={cn(
-                              "w-full justify-start",
-                              buttonProps.className
-                            )}
-                            params={{ chatId: chat._id }}
-                            to="/chat/$chatId"
-                          />
-                        )}
-                        variant="ghost"
+                        params={{ chatId: chat._id }}
+                        preload="intent"
+                        to="/chat/$chatId"
                       />
                     )}
                   >

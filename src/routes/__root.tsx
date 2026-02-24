@@ -36,7 +36,7 @@ function RootComponent() {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset>
+      <SidebarInset className="h-svh min-h-0 overflow-hidden">
         <Outlet />
       </SidebarInset>
     </SidebarProvider>

@@ -14,13 +14,15 @@ import {
   encodeModelValue,
   type Provider,
 } from "@/lib/chat-models";
+import { cn } from "@/lib/utils";
 
-type ChatModelSelectorProps = {
-  provider: Provider;
+interface ChatModelSelectorProps {
+  disabled?: boolean;
   modelId: string;
   onChange: (selection: { provider: Provider; modelId: string }) => void;
-  disabled?: boolean;
-};
+  provider: Provider;
+  triggerClassName?: string;
+}
 
 const providerLabel: Record<Provider, string> = {
   openai: "OpenAI",
@@ -33,6 +35,7 @@ export function ChatModelSelector({
   modelId,
   onChange,
   disabled = false,
+  triggerClassName,
 }: ChatModelSelectorProps) {
   const grouped = {
     openai: CHAT_MODEL_OPTIONS.filter((option) => option.provider === "openai"),
@@ -64,7 +67,10 @@ export function ChatModelSelector({
       }}
       value={value}
     >
-      <SelectTrigger className="w-full sm:w-72" size="sm">
+      <SelectTrigger
+        className={cn("w-full sm:w-72", triggerClassName)}
+        size="sm"
+      >
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
