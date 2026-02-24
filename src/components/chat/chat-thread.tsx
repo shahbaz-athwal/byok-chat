@@ -47,14 +47,6 @@ interface UIMessagePart {
   [key: string]: unknown;
 }
 
-interface UIMessageResult {
-  key: string;
-  parts?: UIMessagePart[];
-  role: "system" | "user" | "assistant" | "tool";
-  status?: "pending" | "success" | "failed";
-  text?: string;
-}
-
 type ToolState =
   | "input-available"
   | "input-streaming"

@@ -1,5 +1,5 @@
+import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "convex/react";
 import { ChatThread } from "@/components/chat/chat-thread";
 import {
   Empty,
@@ -7,17 +7,25 @@ import {
   EmptyHeader,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { api } from "../../convex/_generated/api";
+import { messagesListQuery, threadGetQuery } from "@/queries/threads";
 import type { Id } from "../../convex/_generated/dataModel";
 
 export const Route = createFileRoute("/chat/$chatId")({
+  loader: async ({ context, params }) => {
+    const chatId = params.chatId as Id<"chats">;
+
+    await Promise.all([
+      context.queryClient.ensureQueryData(threadGetQuery(chatId)),
+      context.queryClient.ensureQueryData(messagesListQuery(chatId)),
+    ]);
+  },
   component: ChatPage,
 });
 
 function ChatPage() {
   const { chatId: rawChatId } = Route.useParams();
   const chatId = rawChatId as Id<"chats">;
-  const chat = useQuery(api.threads.get, { chatId });
+  const { data: chat } = useSuspenseQuery(threadGetQuery(chatId));
 
   if (chat === undefined) {
     return (

@@ -5,11 +5,19 @@ import {
 } from "@tanstack/react-router";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { threadsListQuery } from "@/queries/threads";
 import type { RouterContext } from "@/router";
 
 const SIDEBAR_EXCLUDED_PATHS = ["/auth"];
 
 export const Route = createRootRouteWithContext<RouterContext>()({
+  loader: async ({ context, location }) => {
+    if (location.pathname.startsWith("/auth")) {
+      return;
+    }
+
+    await context.queryClient.ensureQueryData(threadsListQuery());
+  },
   component: RootComponent,
 });
 

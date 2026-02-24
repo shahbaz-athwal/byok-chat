@@ -44,21 +44,24 @@ if (!rootElement) {
   throw new Error("Root element not found");
 }
 
-// const initialToken = (
-//   JSON.parse(localStorage.getItem("better-auth_cookie") ?? "null") as Record<
-//     string,
-//     { value: string }
-//   >
-// )["better-auth.convex_jwt"]?.value as string | null;
+let initialToken: string | null = null;
+try {
+  const cookie = JSON.parse(
+    localStorage.getItem("better-auth_cookie") ?? "null"
+  ) as Record<string, { value: string }>;
+  initialToken = cookie["better-auth.convex_jwt"]?.value ?? null;
+} catch (_) {
+  initialToken = null;
+}
 
-// console.log(initialToken);
+console.log(initialToken);
 createRoot(rootElement).render(
   <StrictMode>
     <ThemeProvider defaultTheme="dark" storageKey="theme">
       <ConvexBetterAuthProvider
         authClient={authClient}
         client={convex}
-        // initialToken={initialToken}
+        initialToken={initialToken}
       >
         <QueryClientProvider client={queryClient}>
           <RouterProvider router={router} />

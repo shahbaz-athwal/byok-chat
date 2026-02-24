@@ -1,6 +1,6 @@
-import { useLocation, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "convex/react";
-import { MessageSquareIcon, SquarePenIcon } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { SquarePenIcon } from "lucide-react";
 import { Suspense } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -18,7 +18,8 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { authClient } from "@/lib/auth-client";
-import { api } from "../../convex/_generated/api";
+import { cn } from "@/lib/utils";
+import { threadsListQuery } from "@/queries/threads";
 
 function SidebarFooterUser() {
   const { data: session } = authClient.useSession();
@@ -52,10 +53,7 @@ function SidebarFooterUser() {
 
 export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   const navigate = useNavigate();
-  const { pathname } = useLocation();
-  const chats = useQuery(api.threads.list, {
-    paginationOpts: { cursor: null, numItems: 50 },
-  });
+  const { data: chats } = useQuery(threadsListQuery());
   const chatItems = chats?.page ?? [];
 
   return (
@@ -76,17 +74,31 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
               {chatItems.map((chat) => (
                 <SidebarMenuItem key={chat._id}>
                   <SidebarMenuButton
-                    isActive={pathname === `/chat/${chat._id}`}
-                    onClick={() =>
-                      navigate({
-                        params: { chatId: chat._id },
-                        to: "/chat/$chatId",
-                      })
-                    }
-                    tooltip={chat.title ?? "Untitled chat"}
+                    render={(props) => (
+                      <Button
+                        {...props}
+                        className={cn("w-full justify-start", props.className)}
+                        render={(buttonProps) => (
+                          <Link
+                            {...buttonProps}
+                            activeOptions={{ exact: true }}
+                            activeProps={{
+                              className:
+                                "bg-sidebar-accent text-sidebar-accent-foreground",
+                            }}
+                            className={cn(
+                              "w-full justify-start",
+                              buttonProps.className
+                            )}
+                            params={{ chatId: chat._id }}
+                            to="/chat/$chatId"
+                          />
+                        )}
+                        variant="ghost"
+                      />
+                    )}
                   >
-                    <MessageSquareIcon />
-                    <span>{chat.title ?? "Untitled chat"}</span>
+                    {chat.title ?? "Untitled chat"}
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
