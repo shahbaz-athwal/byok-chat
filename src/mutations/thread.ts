@@ -2,12 +2,19 @@ import { useConvexMutation } from "@convex-dev/react-query";
 import { useMutation } from "@tanstack/react-query";
 import type { FunctionArgs } from "convex/server";
 import { toastManager } from "@/components/ui/toast";
+import { DEFAULT_MODEL_BY_PROVIDER } from "@/lib/chat-models";
 import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
 
-interface StartThreadMutationInput
-  extends FunctionArgs<typeof api.threads.create> {
-  prompt: string;
+interface StartThreadMutationInput {
+  modelId: FunctionArgs<typeof api.threads.createWithFirstMessage>["modelId"];
+  prompt: FunctionArgs<typeof api.threads.createWithFirstMessage>["prompt"];
+  provider: FunctionArgs<typeof api.threads.createWithFirstMessage>["provider"];
 }
+
+const THREADS_LIST_ARGS: FunctionArgs<typeof api.threads.list> = {
+  paginationOpts: { cursor: null, numItems: 50 },
+};
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
@@ -26,23 +33,43 @@ function showMutationErrorToast(
 }
 
 export function useStartThreadMutation() {
-  const createThread = useConvexMutation(api.threads.create);
-  const sendMessage = useConvexMutation(api.messages.send);
+  const startThread = useConvexMutation(
+    api.threads.createWithFirstMessage
+  ).withOptimisticUpdate((localStore, args) => {
+    const currentThreads = localStore.getQuery(
+      api.threads.list,
+      THREADS_LIST_ARGS
+    );
+    if (currentThreads === undefined) {
+      return;
+    }
+
+    const optimisticModelId =
+      args.modelId ?? DEFAULT_MODEL_BY_PROVIDER[args.provider];
+    const optimisticTitle = args.prompt.trim();
+    const optimisticChat = {
+      _id: crypto.randomUUID() as Id<"chats">,
+      _creationTime: Date.now(),
+      modelId: optimisticModelId,
+      provider: args.provider,
+      threadId: crypto.randomUUID(),
+      title:
+        optimisticTitle.length > 0 ? optimisticTitle.slice(0, 80) : undefined,
+      userId: "optimistic",
+    };
+
+    localStore.setQuery(api.threads.list, THREADS_LIST_ARGS, {
+      ...currentThreads,
+      page: [optimisticChat, ...currentThreads.page].slice(
+        0,
+        THREADS_LIST_ARGS.paginationOpts.numItems
+      ),
+    });
+  });
 
   return useMutation({
-    mutationFn: async ({
-      provider,
-      modelId,
-      prompt,
-    }: StartThreadMutationInput) => {
-      const { chatId, threadId } = await createThread({
-        modelId,
-        provider,
-      });
-      const messageId = await sendMessage({ chatId, prompt });
-
-      return { chatId, messageId, threadId };
-    },
+    mutationFn: ({ provider, modelId, prompt }: StartThreadMutationInput) =>
+      startThread({ modelId, prompt, provider }),
     onError: (error) => {
       showMutationErrorToast(
         "Failed to start chat",

@@ -1,7 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useState } from "react";
 import { LoginForm } from "@/components/login-form";
 import { SignupForm } from "@/components/signup-form";
+import { authClient } from "@/lib/auth-client";
 import {
   Card,
   CardDescription,
@@ -11,16 +12,53 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
+interface AuthSearch {
+  redirect?: string;
+}
+
+function getSafeRedirectPath(redirectPath?: string) {
+  if (!redirectPath) {
+    return "/";
+  }
+
+  if (!redirectPath.startsWith("/") || redirectPath.startsWith("//")) {
+    return "/";
+  }
+
+  if (redirectPath.startsWith("/auth")) {
+    return "/";
+  }
+
+  return redirectPath;
+}
+
 export const Route = createFileRoute("/auth")({
+  validateSearch: (search): AuthSearch => ({
+    redirect: typeof search.redirect === "string" ? search.redirect : undefined,
+  }),
+  loader: async ({ location }) => {
+    const session = await authClient.getSession();
+    if (session.data?.session) {
+      const queryParams = new URLSearchParams(location.searchStr);
+      throw redirect({
+        replace: true,
+        to: getSafeRedirectPath(queryParams.get("redirect") ?? undefined),
+      });
+    }
+  },
   component: AuthPage,
 });
 
 function AuthPage() {
   const [activeTab, setActiveTab] = useState("login");
   const navigate = Route.useNavigate();
+  const search = Route.useSearch();
 
   function handleSuccess() {
-    navigate({ to: "/" });
+    navigate({
+      replace: true,
+      to: getSafeRedirectPath(search.redirect),
+    });
   }
 
   return (

@@ -1,7 +1,7 @@
-import { createThread } from "@convex-dev/agent";
+import { createThread, saveMessage } from "@convex-dev/agent";
 import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
-import { components } from "./_generated/api";
+import { components, internal } from "./_generated/api";
 import { internalQuery, mutation, query } from "./_generated/server";
 import { requireAuth } from "./lib/auth";
 import { DEFAULT_MODELS, SUPPORTED_MODELS } from "./lib/models";
@@ -32,6 +32,45 @@ export const create = mutation({
     });
 
     return { chatId, threadId };
+  },
+});
+
+export const createWithFirstMessage = mutation({
+  args: {
+    provider: vProvider,
+    modelId: v.optional(v.string()),
+    prompt: v.string(),
+  },
+  handler: async (ctx, { provider, modelId, prompt }) => {
+    const { userId } = await requireAuth(ctx);
+
+    const resolvedModelId = modelId ?? DEFAULT_MODELS[provider];
+    if (!SUPPORTED_MODELS[provider].includes(resolvedModelId)) {
+      throw new Error(
+        `Unsupported model "${resolvedModelId}" for provider "${provider}"`
+      );
+    }
+
+    const threadId = await createThread(ctx, components.agent, { userId });
+
+    const chatId = await ctx.db.insert("chats", {
+      userId,
+      threadId,
+      provider,
+      modelId: resolvedModelId,
+    });
+
+    const { messageId } = await saveMessage(ctx, components.agent, {
+      threadId,
+      prompt,
+    });
+
+    await ctx.scheduler.runAfter(0, internal.chat.generate, {
+      chatId,
+      promptMessageId: messageId,
+    });
+
+    return { chatId, threadId, messageId };
   },
 });
 

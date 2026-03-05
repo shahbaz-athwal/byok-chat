@@ -1,9 +1,11 @@
 import {
   createRootRouteWithContext,
   Outlet,
+  redirect,
   useLocation,
 } from "@tanstack/react-router";
 import { AppSidebar } from "@/components/app-sidebar";
+import { authClient } from "@/lib/auth-client";
 import {
   SidebarInset,
   SidebarProvider,
@@ -18,6 +20,16 @@ export const Route = createRootRouteWithContext<RouterContext>()({
   loader: async ({ context, location }) => {
     if (location.pathname.startsWith("/auth")) {
       return;
+    }
+
+    const session = await authClient.getSession();
+    if (!session.data?.session) {
+      const redirectPath = `${location.pathname}${location.searchStr}${location.hash}`;
+      throw redirect({
+        replace: true,
+        search: { redirect: redirectPath },
+        to: "/auth",
+      });
     }
 
     await context.queryClient.ensureQueryData(threadsListQuery());

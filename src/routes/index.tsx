@@ -11,7 +11,6 @@ import {
   type Provider,
 } from "@/lib/chat-models";
 import { useStartThreadMutation } from "@/mutations/thread";
-import type { Id } from "../../convex/_generated/dataModel";
 
 const COMMON_QUESTIONS = [
   "How does AI work?",
@@ -42,14 +41,13 @@ function HomePage() {
     provider,
     modelId,
   }: ChatComposerSubmitPayload) {
-    // TODO: make this optimistic update and navigate to the chat page
     const { chatId } = await startThreadMutation.mutateAsync({
       modelId,
       prompt: message,
       provider,
     });
     navigate({
-      params: { chatId: chatId as Id<"chats"> },
+      params: { chatId },
       to: "/chat/$chatId",
     });
   }

@@ -5,6 +5,12 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from "@/components/ui/empty";
+import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
@@ -52,8 +58,9 @@ function SidebarFooterUser() {
 export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   const navigate = useNavigate();
   const params = useParams({ strict: false });
-  const { data: chats } = useQuery(threadsListQuery());
+  const { data: chats, isPending } = useQuery(threadsListQuery());
   const chatItems = chats?.page ?? [];
+  const showEmptyState = !isPending && chatItems.length === 0;
 
   return (
     <Sidebar {...props}>
@@ -68,25 +75,36 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
         <SidebarGroup>
           <SidebarGroupLabel>Chats</SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
-              {chatItems.map((chat) => (
-                <SidebarMenuItem key={chat._id}>
-                  <SidebarMenuButton
-                    isActive={params.chatId === chat._id}
-                    render={(props) => (
-                      <Link
-                        {...props}
-                        params={{ chatId: chat._id }}
-                        preload="intent"
-                        to="/chat/$chatId"
-                      />
-                    )}
-                  >
-                    {chat.title ?? "Untitled chat"}
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
+            {showEmptyState ? (
+              <Empty className="gap-2 px-2 py-8">
+                <EmptyHeader className="max-w-none">
+                  <EmptyTitle className="text-sm">No chats yet</EmptyTitle>
+                  <EmptyDescription className="text-xs">
+                    Start a new conversation to see it here.
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            ) : (
+              <SidebarMenu>
+                {chatItems.map((chat) => (
+                  <SidebarMenuItem key={chat._id}>
+                    <SidebarMenuButton
+                      isActive={params.chatId === chat._id}
+                      render={(props) => (
+                        <Link
+                          {...props}
+                          params={{ chatId: chat._id }}
+                          preload="intent"
+                          to="/chat/$chatId"
+                        />
+                      )}
+                    >
+                      {chat.title ?? "Untitled chat"}
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            )}
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
