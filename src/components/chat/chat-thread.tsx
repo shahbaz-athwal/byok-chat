@@ -1,7 +1,7 @@
 "use client";
 
 import type { UIMessage } from "@convex-dev/agent";
-import { useUIMessages } from "@convex-dev/agent/react";
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import {
   Message,
@@ -13,7 +13,7 @@ import {
   useSendThreadMessageMutation,
   useUpdateThreadModelMutation,
 } from "@/mutations/thread";
-import { api } from "../../../convex/_generated/api";
+import { messagesListQuery } from "@/queries/threads";
 import {
   ChatComposer,
   ChatComposerProvider,
@@ -40,23 +40,12 @@ function getMessageText(message: UIMessage) {
 export function ChatThread({ threadId, provider, modelId }: ChatThreadProps) {
   const sendMessageMutation = useSendThreadMessageMutation();
   const updateModelMutation = useUpdateThreadModelMutation();
-
-  const { results } = useUIMessages(
-    // biome-ignore lint/suspicious/noExplicitAny: hook typing does not infer this generated query reference.
-    api.messages.list as any,
-    {
-      threadId,
-    },
-    {
-      initialNumItems: 20,
-      stream: true,
-    }
-  );
+  const { data } = useQuery(messagesListQuery(threadId));
 
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLDivElement>(null);
   const [composerHeight, setComposerHeight] = useState(0);
-  const messages = results as UIMessage[];
+  const messages = (data?.page ?? []) as UIMessage[];
   const lastMessage = messages.at(-1);
   const isAssistantStreaming =
     lastMessage?.role === "assistant" && lastMessage.status === "pending";

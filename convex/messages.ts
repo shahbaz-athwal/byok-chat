@@ -46,9 +46,25 @@ export const send = mutation({
       userId: threadContext.userId,
     });
 
+    const apiKey = await ctx.db
+      .query("apiKeys")
+      .withIndex("by_userId_provider", (q) =>
+        q
+          .eq("userId", threadContext.userId)
+          .eq("provider", threadContext.config.provider)
+      )
+      .unique();
+
+    if (!apiKey) {
+      throw new Error(
+        `No API key configured for provider "${threadContext.config.provider}". Please add your API key in settings.`
+      );
+    }
+
     await ctx.scheduler.runAfter(0, internal.chat.generate, {
       promptMessageId: messageId,
       threadId,
+      apiKey: apiKey.apiKey,
     });
 
     return messageId;

@@ -88,9 +88,23 @@ export const createWithFirstMessage = mutation({
       userId,
     });
 
+    const apiKey = await ctx.db
+      .query("apiKeys")
+      .withIndex("by_userId_provider", (q) =>
+        q.eq("userId", userId).eq("provider", provider)
+      )
+      .unique();
+
+    if (!apiKey) {
+      throw new Error(
+        `No API key configured for provider "${provider}". Please add your API key in settings.`
+      );
+    }
+
     await ctx.scheduler.runAfter(0, internal.chat.generate, {
       promptMessageId: messageId,
       threadId,
+      apiKey: apiKey.apiKey,
     });
 
     return { messageId, threadId };

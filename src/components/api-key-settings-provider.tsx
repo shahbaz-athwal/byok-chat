@@ -16,7 +16,6 @@ import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
   Sheet,
-  SheetDescription,
   SheetHeader,
   SheetPanel,
   SheetPopup,
@@ -225,16 +224,8 @@ export function ApiKeySettingsProvider({
         <SheetPopup inset side="right">
           <SheetHeader>
             <div className="flex items-center gap-3">
-              <div className="rounded-full border border-border/60 bg-muted/60 p-2">
-                <KeyIcon className="size-4" />
-              </div>
-              <div className="space-y-1">
-                <SheetTitle>API Keys</SheetTitle>
-                <SheetDescription>
-                  Store provider keys in Convex and manage which models are
-                  available in chat.
-                </SheetDescription>
-              </div>
+              <KeyIcon className="size-4" />
+              <SheetTitle>API Keys</SheetTitle>
             </div>
           </SheetHeader>
           <SheetPanel className="space-y-4">

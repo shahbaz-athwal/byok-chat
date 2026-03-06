@@ -1,6 +1,6 @@
 import { Agent } from "@convex-dev/agent";
 import { v } from "convex/values";
-import { components, internal } from "./_generated/api";
+import { components } from "./_generated/api";
 import { internalAction } from "./_generated/server";
 import { resolveModel } from "./lib/models";
 import { getThreadContext } from "./lib/threadMetadata";
@@ -9,17 +9,13 @@ export const generate = internalAction({
   args: {
     promptMessageId: v.string(),
     threadId: v.string(),
+    apiKey: v.string(),
   },
-  handler: async (ctx, { threadId, promptMessageId }) => {
+  handler: async (ctx, { threadId, promptMessageId, apiKey }) => {
     const threadContext = await getThreadContext(ctx, threadId);
     if (!threadContext?.thread.userId) {
       throw new Error("Chat not found");
     }
-
-    const apiKey = await ctx.runQuery(internal.apiKeys.getKey, {
-      userId: threadContext.thread.userId,
-      provider: threadContext.config.provider,
-    });
 
     const model = resolveModel(
       threadContext.config.provider,
