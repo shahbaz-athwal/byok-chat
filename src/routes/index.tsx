@@ -1,3 +1,8 @@
+import {
+  type ChatModelSelection,
+  DEFAULT_MODEL_BY_PROVIDER,
+  DEFAULT_PROVIDER,
+} from "@shared/chat-models";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useApiKeySettings } from "@/components/api-key-settings-provider";
@@ -6,13 +11,6 @@ import {
   ChatComposerProvider,
   type ChatComposerSubmitPayload,
 } from "@/components/chat/chat-composer";
-import { Button } from "@/components/ui/button";
-import {
-  type ChatModelSelection,
-  DEFAULT_MODEL_BY_PROVIDER,
-  DEFAULT_PROVIDER,
-  PROVIDER_LABELS,
-} from "@/lib/chat-models";
 import { useStartThreadMutation } from "@/mutations/thread";
 
 const COMMON_QUESTIONS = [
@@ -88,17 +86,7 @@ function HomePage() {
               Ask anything, or start with one of these common questions.
             </p>
           </div>
-          {hasSelectedProviderKey ? null : (
-            <div className="mb-6 flex w-full items-center justify-between gap-3 rounded-2xl border border-border/60 bg-muted/35 px-4 py-3">
-              <p className="text-muted-foreground text-sm">
-                Add your {PROVIDER_LABELS[selectedProvider]} API key before you
-                start a new chat.
-              </p>
-              <Button onClick={openSettings} size="sm" variant="outline">
-                Open settings
-              </Button>
-            </div>
-          )}
+
           <ul className="w-full divide-y divide-border/60">
             {COMMON_QUESTIONS.map((question) => (
               <li key={question}>

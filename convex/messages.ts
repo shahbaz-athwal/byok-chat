@@ -1,23 +1,18 @@
-import {
-  listUIMessages,
-  saveMessage,
-  syncStreams,
-  vStreamArgs,
-} from "@convex-dev/agent";
+import { listUIMessages, syncStreams, vStreamArgs } from "@convex-dev/agent";
 import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
-import { components, internal } from "./_generated/api";
-import { mutation, query } from "./_generated/server";
-import { requireOwnedThreadContext } from "./lib/threadMetadata";
+import { components } from "./_generated/api";
+import { query } from "./_generated/server";
+import { getOwnedThreadContextOrThrow } from "./threads";
 
 export const list = query({
   args: {
-    threadId: v.string(),
+    threadId: v.id("chats"),
     paginationOpts: paginationOptsValidator,
     streamArgs: vStreamArgs,
   },
   handler: async (ctx, args) => {
-    await requireOwnedThreadContext(ctx, args.threadId);
+    await getOwnedThreadContextOrThrow(ctx, args.threadId);
 
     const paginated = await listUIMessages(ctx, components.agent, {
       threadId: args.threadId,
@@ -29,44 +24,5 @@ export const list = query({
     });
 
     return { ...paginated, streams };
-  },
-});
-
-export const send = mutation({
-  args: {
-    threadId: v.string(),
-    prompt: v.string(),
-  },
-  handler: async (ctx, { threadId, prompt }) => {
-    const threadContext = await requireOwnedThreadContext(ctx, threadId);
-
-    const { messageId } = await saveMessage(ctx, components.agent, {
-      prompt,
-      threadId,
-      userId: threadContext.userId,
-    });
-
-    const apiKey = await ctx.db
-      .query("apiKeys")
-      .withIndex("by_userId_provider", (q) =>
-        q
-          .eq("userId", threadContext.userId)
-          .eq("provider", threadContext.config.provider)
-      )
-      .unique();
-
-    if (!apiKey) {
-      throw new Error(
-        `No API key configured for provider "${threadContext.config.provider}". Please add your API key in settings.`
-      );
-    }
-
-    await ctx.scheduler.runAfter(0, internal.chat.generate, {
-      promptMessageId: messageId,
-      threadId,
-      apiKey: apiKey.apiKey,
-    });
-
-    return messageId;
   },
 });

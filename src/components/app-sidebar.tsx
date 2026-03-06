@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { KeyIcon } from "lucide-react";
 import { Suspense } from "react";
@@ -25,7 +25,6 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { authClient } from "@/lib/auth-client";
-import type { ThreadListResult, ThreadSummary } from "@/lib/thread-data";
 import { threadsListQuery } from "@/queries/threads";
 
 function SidebarFooterUser() {
@@ -62,10 +61,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   const { openSettings } = useApiKeySettings();
   const navigate = useNavigate();
   const params = useParams({ strict: false });
-  const { data: chats, isPending } = useQuery(threadsListQuery());
-  const chatItems = ((chats as ThreadListResult | undefined)?.page ??
-    []) as ThreadSummary[];
-  const showEmptyState = !isPending && chatItems.length === 0;
+  const { data: chats } = useSuspenseQuery(threadsListQuery());
 
   return (
     <Sidebar {...props}>
@@ -74,21 +70,13 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
         <Button className="mt-2 w-full" onClick={() => navigate({ to: "/" })}>
           New Chat
         </Button>
-        <Button
-          className="mt-2 w-full"
-          onClick={openSettings}
-          variant="outline"
-        >
-          <KeyIcon />
-          API Keys
-        </Button>
       </SidebarHeader>
 
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>Chats</SidebarGroupLabel>
           <SidebarGroupContent>
-            {showEmptyState ? (
+            {chats.length === 0 ? (
               <Empty className="gap-2 px-2 py-8">
                 <EmptyHeader className="max-w-none">
                   <EmptyTitle className="text-sm">No chats yet</EmptyTitle>
@@ -99,7 +87,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
               </Empty>
             ) : (
               <SidebarMenu>
-                {chatItems.map((chat) => (
+                {chats.map((chat) => (
                   <SidebarMenuItem key={chat.threadId}>
                     <SidebarMenuButton
                       isActive={params.threadId === chat.threadId}
@@ -123,6 +111,14 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
       </SidebarContent>
 
       <SidebarFooter>
+        <Button
+          className="mt-2 w-full"
+          onClick={openSettings}
+          variant="outline"
+        >
+          <KeyIcon />
+          API Keys
+        </Button>
         <div className="flex items-center gap-2">
           <Suspense>
             <SidebarFooterUser />

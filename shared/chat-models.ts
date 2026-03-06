@@ -1,4 +1,6 @@
-export type Provider = "openai" | "google" | "anthropic";
+export const PROVIDERS = ["openai", "google", "anthropic"] as const;
+
+export type Provider = (typeof PROVIDERS)[number];
 
 export interface ModelOption {
   label: string;
@@ -53,16 +55,58 @@ export const CHAT_MODEL_OPTIONS: readonly ModelOption[] = [
   },
 ];
 
+export const MODEL_OPTIONS_BY_PROVIDER: Record<
+  Provider,
+  readonly ModelOption[]
+> = {
+  anthropic: CHAT_MODEL_OPTIONS.filter(
+    (option) => option.provider === "anthropic"
+  ),
+  google: CHAT_MODEL_OPTIONS.filter((option) => option.provider === "google"),
+  openai: CHAT_MODEL_OPTIONS.filter((option) => option.provider === "openai"),
+};
+
+export const SUPPORTED_MODELS: Record<Provider, readonly string[]> = {
+  anthropic: MODEL_OPTIONS_BY_PROVIDER.anthropic.map(
+    (option) => option.modelId
+  ),
+  google: MODEL_OPTIONS_BY_PROVIDER.google.map((option) => option.modelId),
+  openai: MODEL_OPTIONS_BY_PROVIDER.openai.map((option) => option.modelId),
+};
+
 export const DEFAULT_MODEL_BY_PROVIDER: Record<Provider, string> = {
-  openai: "gpt-5-nano",
-  google: "gemini-3.1-pro-preview",
   anthropic: "claude-opus-4-6",
+  google: "gemini-3.1-pro-preview",
+  openai: "gpt-5-nano",
 };
 
 export const DEFAULT_PROVIDER: Provider = "openai";
 
-export const encodeModelValue = (provider: Provider, modelId: string) =>
-  `${provider}:${modelId}`;
+export function assertSupportedModel(
+  provider: Provider,
+  modelId: string
+): void {
+  const supportedModels = SUPPORTED_MODELS[provider];
+
+  if (!supportedModels.includes(modelId)) {
+    throw new Error(
+      `Unsupported model "${modelId}" for provider "${provider}". Supported: ${supportedModels.join(", ")}`
+    );
+  }
+}
+
+export function resolveRequestedModelOrThrow(
+  provider: Provider,
+  modelId?: string | null
+): string {
+  const resolvedModelId = modelId ?? DEFAULT_MODEL_BY_PROVIDER[provider];
+  assertSupportedModel(provider, resolvedModelId);
+  return resolvedModelId;
+}
+
+export function encodeModelValue(provider: Provider, modelId: string): string {
+  return `${provider}:${modelId}`;
+}
 
 export function decodeModelValue(value: string): ChatModelSelection | null {
   const [provider, ...modelIdParts] = value.split(":");

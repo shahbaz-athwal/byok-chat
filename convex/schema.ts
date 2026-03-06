@@ -1,15 +1,11 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { literals, typedV } from "convex-helpers/validators";
+import { PROVIDERS } from "../shared/chat-models";
 
-export const vProvider = v.union(
-  v.literal("openai"),
-  v.literal("google"),
-  v.literal("anthropic")
-);
+export const vProvider = literals(...PROVIDERS);
 
-export type Provider = "openai" | "google" | "anthropic";
-
-export default defineSchema({
+export const schema = defineSchema({
   apiKeys: defineTable({
     userId: v.string(),
     provider: vProvider,
@@ -18,9 +14,18 @@ export default defineSchema({
     .index("by_userId", ["userId"])
     .index("by_userId_provider", ["userId", "provider"]),
 
-  chats: defineTable({
+  threadConfig: defineTable({
+    title: v.optional(v.string()),
+    userId: v.string(),
+    status: literals("active", "archived"),
     threadId: v.string(),
     provider: vProvider,
-    modelId: v.string(),
-  }).index("by_threadId", ["threadId"]),
+    modelSlug: v.string(),
+  })
+    .index("by_threadId", ["threadId"])
+    .index("by_userId", ["userId"]),
 });
+
+export const vv = typedV(schema);
+
+export default schema;

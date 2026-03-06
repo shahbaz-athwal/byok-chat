@@ -1,7 +1,7 @@
 import { v } from "convex/values";
+import { SUPPORTED_MODELS } from "../shared/chat-models";
 import { internalQuery, mutation, query } from "./_generated/server";
 import { requireAuth } from "./lib/auth";
-import { SUPPORTED_MODELS } from "./lib/models";
 import { vProvider } from "./schema";
 
 function maskKey(key: string): string {
@@ -28,10 +28,9 @@ export const save = mutation({
 
     if (existing) {
       await ctx.db.patch(existing._id, { apiKey });
-      return existing._id;
     }
 
-    return await ctx.db.insert("apiKeys", { userId, provider, apiKey });
+    await ctx.db.insert("apiKeys", { userId, provider, apiKey });
   },
 });
 
@@ -66,9 +65,9 @@ export const list = query({
       .collect();
 
     return keys.map((key) => ({
-      provider: key.provider,
       maskedKey: maskKey(key.apiKey),
-      models: SUPPORTED_MODELS[key.provider],
+      models: [...SUPPORTED_MODELS[key.provider]],
+      provider: key.provider,
     }));
   },
 });
@@ -78,6 +77,7 @@ export const getKey = internalQuery({
     userId: v.string(),
     provider: vProvider,
   },
+  returns: v.string(),
   handler: async (ctx, { userId, provider }) => {
     const doc = await ctx.db
       .query("apiKeys")

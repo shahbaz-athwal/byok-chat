@@ -15,6 +15,7 @@ import type * as http from "../http.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_models from "../lib/models.js";
 import type * as lib_threadMetadata from "../lib/threadMetadata.js";
+import type * as lib_validators from "../lib/validators.js";
 import type * as messages from "../messages.js";
 import type * as threads from "../threads.js";
 
@@ -32,6 +33,7 @@ declare const fullApi: ApiFromModules<{
   "lib/auth": typeof lib_auth;
   "lib/models": typeof lib_models;
   "lib/threadMetadata": typeof lib_threadMetadata;
+  "lib/validators": typeof lib_validators;
   messages: typeof messages;
   threads: typeof threads;
 }>;

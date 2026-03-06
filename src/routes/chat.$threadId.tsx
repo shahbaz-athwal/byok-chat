@@ -7,7 +7,6 @@ import {
   EmptyHeader,
   EmptyTitle,
 } from "@/components/ui/empty";
-import type { ThreadSummary } from "@/lib/thread-data";
 import { messagesListQuery, threadGetQuery } from "@/queries/threads";
 
 export const Route = createFileRoute("/chat/$threadId")({
@@ -24,16 +23,7 @@ export const Route = createFileRoute("/chat/$threadId")({
 
 function ChatPage() {
   const { threadId } = Route.useParams();
-  const { data: chatData } = useSuspenseQuery(threadGetQuery(threadId));
-  const chat = (chatData as ThreadSummary | null | undefined) ?? null;
-
-  if (chat === undefined) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <p className="text-muted-foreground text-sm">Loading chat...</p>
-      </div>
-    );
-  }
+  const { data: chat } = useSuspenseQuery(threadGetQuery(threadId));
 
   if (!chat) {
     return (

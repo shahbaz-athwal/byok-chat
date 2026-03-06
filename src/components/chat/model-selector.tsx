@@ -1,6 +1,15 @@
 "use client";
 
 import {
+  type ChatModelSelection,
+  decodeModelValue,
+  encodeModelValue,
+  MODEL_OPTIONS_BY_PROVIDER,
+  PROVIDER_LABELS,
+  PROVIDERS,
+  type Provider,
+} from "@shared/chat-models";
+import {
   Select,
   SelectContent,
   SelectGroup,
@@ -9,14 +18,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  CHAT_MODEL_OPTIONS,
-  type ChatModelSelection,
-  decodeModelValue,
-  encodeModelValue,
-  PROVIDER_LABELS,
-  type Provider,
-} from "@/lib/chat-models";
 import { cn } from "@/lib/utils";
 
 interface ChatModelSelectorProps {
@@ -34,14 +35,6 @@ export function ChatModelSelector({
   disabled = false,
   triggerClassName,
 }: ChatModelSelectorProps) {
-  const grouped = {
-    openai: CHAT_MODEL_OPTIONS.filter((option) => option.provider === "openai"),
-    google: CHAT_MODEL_OPTIONS.filter((option) => option.provider === "google"),
-    anthropic: CHAT_MODEL_OPTIONS.filter(
-      (option) => option.provider === "anthropic"
-    ),
-  };
-
   const value = encodeModelValue(provider, modelId);
 
   return (
@@ -66,12 +59,12 @@ export function ChatModelSelector({
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        {(Object.keys(grouped) as Provider[]).map((groupProvider) => (
+        {PROVIDERS.map((groupProvider) => (
           <SelectGroup key={groupProvider}>
             <SelectGroupLabel>
               {PROVIDER_LABELS[groupProvider]}
             </SelectGroupLabel>
-            {grouped[groupProvider].map((option) => (
+            {MODEL_OPTIONS_BY_PROVIDER[groupProvider].map((option) => (
               <SelectItem
                 key={`${option.provider}-${option.modelId}`}
                 value={encodeModelValue(option.provider, option.modelId)}

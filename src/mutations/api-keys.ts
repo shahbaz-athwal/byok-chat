@@ -1,7 +1,6 @@
 import { useConvexMutation } from "@convex-dev/react-query";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { toastManager } from "@/components/ui/toast";
-import { apiKeysListQuery } from "@/queries/api-keys";
 import { api } from "../../convex/_generated/api";
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -21,8 +20,6 @@ function showMutationErrorToast(
 }
 
 export function useSaveApiKeyMutation() {
-  const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: useConvexMutation(api.apiKeys.save),
     onError: (error) => {
@@ -32,17 +29,10 @@ export function useSaveApiKeyMutation() {
         "Could not save API key"
       );
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: apiKeysListQuery().queryKey,
-      });
-    },
   });
 }
 
 export function useRemoveApiKeyMutation() {
-  const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: useConvexMutation(api.apiKeys.remove),
     onError: (error) => {
@@ -51,11 +41,6 @@ export function useRemoveApiKeyMutation() {
         error,
         "Could not remove API key"
       );
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: apiKeysListQuery().queryKey,
-      });
     },
   });
 }

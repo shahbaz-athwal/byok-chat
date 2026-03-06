@@ -1,6 +1,7 @@
 "use client";
 
 import type { UIMessage } from "@convex-dev/agent";
+import type { Provider } from "@shared/chat-models";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -8,7 +9,6 @@ import {
   MessageContent,
   MessageResponse,
 } from "@/components/ai-elements/message";
-import type { Provider } from "@/lib/chat-models";
 import {
   useSendThreadMessageMutation,
   useUpdateThreadModelMutation,
@@ -45,7 +45,7 @@ export function ChatThread({ threadId, provider, modelId }: ChatThreadProps) {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLDivElement>(null);
   const [composerHeight, setComposerHeight] = useState(0);
-  const messages = (data?.page ?? []) as UIMessage[];
+  const messages: UIMessage[] = data?.page ?? [];
   const lastMessage = messages.at(-1);
   const isAssistantStreaming =
     lastMessage?.role === "assistant" && lastMessage.status === "pending";

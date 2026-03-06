@@ -1,5 +1,6 @@
 "use client";
 
+import { PROVIDER_LABELS, type Provider } from "@shared/chat-models";
 import { SendIcon } from "lucide-react";
 import {
   createContext,
@@ -11,7 +12,6 @@ import {
 } from "react";
 import { useApiKeySettings } from "@/components/api-key-settings-provider";
 import { Button } from "@/components/ui/button";
-import { PROVIDER_LABELS, type Provider } from "@/lib/chat-models";
 import { cn } from "@/lib/utils";
 import { ChatModelSelector } from "./model-selector";
 

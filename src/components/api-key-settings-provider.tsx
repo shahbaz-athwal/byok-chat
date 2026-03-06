@@ -1,5 +1,7 @@
 "use client";
 
+import { PROVIDER_LABELS, PROVIDERS, type Provider } from "@shared/chat-models";
+import type { ApiKeyListEntry } from "@shared/contracts";
 import { useQuery } from "@tanstack/react-query";
 import { KeyIcon } from "lucide-react";
 import { createContext, type ReactNode, useContext, useState } from "react";
@@ -22,7 +24,6 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { toastManager } from "@/components/ui/toast";
-import { PROVIDER_LABELS, type Provider } from "@/lib/chat-models";
 import {
   useRemoveApiKeyMutation,
   useSaveApiKeyMutation,
@@ -64,12 +65,6 @@ interface ProviderApiKeyCardProps {
   models: readonly string[];
   onRemove: (provider: Provider) => Promise<void>;
   onSave: (provider: Provider, apiKey: string) => Promise<void>;
-  provider: Provider;
-}
-
-interface ApiKeyListEntry {
-  maskedKey: string;
-  models: readonly string[];
   provider: Provider;
 }
 
@@ -125,7 +120,7 @@ function ProviderApiKeyCard({
 
   return (
     <Card className="gap-4 py-5">
-      <CardHeader className="flex items-start justify-between gap-3 border-b pb-4">
+      <CardHeader className="flex items-start justify-between gap-3">
         <div className="space-y-1">
           <CardTitle>{PROVIDER_LABELS[provider]}</CardTitle>
           <CardDescription>
@@ -135,12 +130,12 @@ function ProviderApiKeyCard({
           </CardDescription>
         </div>
         <Badge variant={isConfigured ? "success" : "outline"}>
-          {isConfigured ? "Configured" : "Missing"}
+          {isConfigured ? "Configured" : "Not Set"}
         </Badge>
       </CardHeader>
       <CardPanel className="space-y-4">
         <Field className="w-full gap-1.5">
-          <FieldLabel htmlFor={`provider-key-${provider}`}>API key</FieldLabel>
+          <FieldLabel htmlFor={`provider-key-${provider}`}>API Key</FieldLabel>
           <Input
             autoComplete="off"
             disabled={isPending}
@@ -153,7 +148,7 @@ function ProviderApiKeyCard({
           <FieldDescription>
             {models.length > 0
               ? `Available models: ${models.join(", ")}`
-              : "No models available for this provider."}
+              : null}
           </FieldDescription>
         </Field>
         <div className="flex flex-wrap items-center gap-2">
@@ -161,14 +156,14 @@ function ProviderApiKeyCard({
             disabled={apiKey.trim().length === 0 || isPending}
             onClick={handleSave}
           >
-            {isConfigured ? "Update key" : "Save key"}
+            {isConfigured ? "Update" : "Save"}
           </Button>
           <Button
             disabled={!isConfigured || isPending}
             onClick={handleRemove}
             variant="outline"
           >
-            Remove key
+            Remove
           </Button>
         </div>
       </CardPanel>
@@ -187,7 +182,7 @@ export function ApiKeySettingsProvider({
   const configuredProviders = createEmptyProviderConfiguration();
   const maskedKeys = createEmptyProviderMaskedKeys();
   const modelsByProvider = createEmptyProviderModels();
-  const apiKeyEntries = (data ?? []) as ApiKeyListEntry[];
+  const apiKeyEntries: readonly ApiKeyListEntry[] = data ?? [];
 
   for (const keyEntry of apiKeyEntries) {
     configuredProviders[keyEntry.provider] = true;
@@ -225,52 +220,27 @@ export function ApiKeySettingsProvider({
           <SheetHeader>
             <div className="flex items-center gap-3">
               <KeyIcon className="size-4" />
-              <SheetTitle>API Keys</SheetTitle>
+              <SheetTitle className="font-medium text-lg">API Keys</SheetTitle>
             </div>
           </SheetHeader>
           <SheetPanel className="space-y-4">
-            <ProviderApiKeyCard
-              isConfigured={configuredProviders.openai}
-              isPending={
-                (saveApiKeyMutation.isPending &&
-                  saveApiKeyMutation.variables?.provider === "openai") ||
-                (removeApiKeyMutation.isPending &&
-                  removeApiKeyMutation.variables?.provider === "openai")
-              }
-              maskedKey={maskedKeys.openai}
-              models={modelsByProvider.openai}
-              onRemove={handleRemove}
-              onSave={handleSave}
-              provider="openai"
-            />
-            <ProviderApiKeyCard
-              isConfigured={configuredProviders.google}
-              isPending={
-                (saveApiKeyMutation.isPending &&
-                  saveApiKeyMutation.variables?.provider === "google") ||
-                (removeApiKeyMutation.isPending &&
-                  removeApiKeyMutation.variables?.provider === "google")
-              }
-              maskedKey={maskedKeys.google}
-              models={modelsByProvider.google}
-              onRemove={handleRemove}
-              onSave={handleSave}
-              provider="google"
-            />
-            <ProviderApiKeyCard
-              isConfigured={configuredProviders.anthropic}
-              isPending={
-                (saveApiKeyMutation.isPending &&
-                  saveApiKeyMutation.variables?.provider === "anthropic") ||
-                (removeApiKeyMutation.isPending &&
-                  removeApiKeyMutation.variables?.provider === "anthropic")
-              }
-              maskedKey={maskedKeys.anthropic}
-              models={modelsByProvider.anthropic}
-              onRemove={handleRemove}
-              onSave={handleSave}
-              provider="anthropic"
-            />
+            {PROVIDERS.map((provider) => (
+              <ProviderApiKeyCard
+                isConfigured={configuredProviders[provider]}
+                isPending={
+                  (saveApiKeyMutation.isPending &&
+                    saveApiKeyMutation.variables?.provider === provider) ||
+                  (removeApiKeyMutation.isPending &&
+                    removeApiKeyMutation.variables?.provider === provider)
+                }
+                key={provider}
+                maskedKey={maskedKeys[provider]}
+                models={modelsByProvider[provider]}
+                onRemove={handleRemove}
+                onSave={handleSave}
+                provider={provider}
+              />
+            ))}
           </SheetPanel>
         </SheetPopup>
       </Sheet>
