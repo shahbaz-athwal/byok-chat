@@ -8,28 +8,23 @@ import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import { components, internal } from "./_generated/api";
 import { mutation, query } from "./_generated/server";
-import { requireAuth } from "./lib/auth";
+import { requireOwnedThreadContext } from "./lib/threadMetadata";
 
 export const list = query({
   args: {
-    chatId: v.id("chats"),
+    threadId: v.string(),
     paginationOpts: paginationOptsValidator,
     streamArgs: vStreamArgs,
   },
   handler: async (ctx, args) => {
-    const { userId } = await requireAuth(ctx);
-
-    const chat = await ctx.db.get(args.chatId);
-    if (!chat || chat.userId !== userId) {
-      throw new Error("Chat not found");
-    }
+    await requireOwnedThreadContext(ctx, args.threadId);
 
     const paginated = await listUIMessages(ctx, components.agent, {
-      threadId: chat.threadId,
+      threadId: args.threadId,
       paginationOpts: args.paginationOpts,
     });
     const streams = await syncStreams(ctx, components.agent, {
-      threadId: chat.threadId,
+      threadId: args.threadId,
       streamArgs: args.streamArgs,
     });
 
@@ -39,25 +34,21 @@ export const list = query({
 
 export const send = mutation({
   args: {
-    chatId: v.id("chats"),
+    threadId: v.string(),
     prompt: v.string(),
   },
-  handler: async (ctx, { chatId, prompt }) => {
-    const { userId } = await requireAuth(ctx);
-
-    const chat = await ctx.db.get(chatId);
-    if (!chat || chat.userId !== userId) {
-      throw new Error("Chat not found");
-    }
+  handler: async (ctx, { threadId, prompt }) => {
+    const threadContext = await requireOwnedThreadContext(ctx, threadId);
 
     const { messageId } = await saveMessage(ctx, components.agent, {
-      threadId: chat.threadId,
       prompt,
+      threadId,
+      userId: threadContext.userId,
     });
 
     await ctx.scheduler.runAfter(0, internal.chat.generate, {
-      chatId,
       promptMessageId: messageId,
+      threadId,
     });
 
     return messageId;

@@ -1,6 +1,5 @@
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "../../convex/_generated/api";
-import type { Id } from "../../convex/_generated/dataModel";
 
 export function threadsListQuery() {
   return convexQuery(api.threads.list, {
@@ -8,13 +7,13 @@ export function threadsListQuery() {
   });
 }
 
-export function threadGetQuery(chatId: Id<"chats">) {
-  return convexQuery(api.threads.get, { chatId });
+export function threadGetQuery(threadId: string) {
+  return convexQuery(api.threads.get, { threadId });
 }
 
-export function messagesListQuery(chatId: Id<"chats">) {
+export function messagesListQuery(threadId: string) {
   return convexQuery(api.messages.list, {
-    chatId,
+    threadId,
     paginationOpts: { cursor: null, numItems: 20 },
   });
 }

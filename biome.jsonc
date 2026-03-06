@@ -20,6 +20,16 @@
   },
   "overrides": [
     {
+      "includes": ["src/routes/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "useFilenamingConvention": "off"
+          }
+        }
+      }
+    },
+    {
       "includes": ["convex/**"],
       "linter": {
         "rules": {

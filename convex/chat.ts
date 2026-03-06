@@ -3,21 +3,29 @@ import { v } from "convex/values";
 import { components, internal } from "./_generated/api";
 import { internalAction } from "./_generated/server";
 import { resolveModel } from "./lib/models";
+import { getThreadContext } from "./lib/threadMetadata";
 
 export const generate = internalAction({
   args: {
-    chatId: v.id("chats"),
     promptMessageId: v.string(),
+    threadId: v.string(),
   },
-  handler: async (ctx, { chatId, promptMessageId }) => {
-    const chat = await ctx.runQuery(internal.threads.getInternal, { chatId });
+  handler: async (ctx, { threadId, promptMessageId }) => {
+    const threadContext = await getThreadContext(ctx, threadId);
+    if (!threadContext?.thread.userId) {
+      throw new Error("Chat not found");
+    }
 
     const apiKey = await ctx.runQuery(internal.apiKeys.getKey, {
-      userId: chat.userId,
-      provider: chat.provider,
+      userId: threadContext.thread.userId,
+      provider: threadContext.config.provider,
     });
 
-    const model = resolveModel(chat.provider, chat.modelId, apiKey);
+    const model = resolveModel(
+      threadContext.config.provider,
+      threadContext.config.modelId,
+      apiKey
+    );
 
     const agent = new Agent(components.agent, {
       name: "byok-chat",
@@ -26,8 +34,8 @@ export const generate = internalAction({
     });
 
     const { thread } = await agent.continueThread(ctx, {
-      threadId: chat.threadId,
-      userId: chat.userId,
+      threadId,
+      userId: threadContext.thread.userId,
     });
 
     await thread.streamText({ promptMessageId }, { saveStreamDeltas: true });

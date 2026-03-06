@@ -6,6 +6,17 @@ export interface ModelOption {
   provider: Provider;
 }
 
+export interface ChatModelSelection {
+  modelId: string;
+  provider: Provider;
+}
+
+export const PROVIDER_LABELS: Record<Provider, string> = {
+  anthropic: "Anthropic",
+  google: "Google",
+  openai: "OpenAI",
+};
+
 export const CHAT_MODEL_OPTIONS: readonly ModelOption[] = [
   { provider: "openai", modelId: "gpt-5.2", label: "GPT-5.2" },
   { provider: "openai", modelId: "gpt-5-mini", label: "GPT-5 mini" },
@@ -53,7 +64,7 @@ export const DEFAULT_PROVIDER: Provider = "openai";
 export const encodeModelValue = (provider: Provider, modelId: string) =>
   `${provider}:${modelId}`;
 
-export const decodeModelValue = (value: string) => {
+export function decodeModelValue(value: string): ChatModelSelection | null {
   const [provider, ...modelIdParts] = value.split(":");
   const modelId = modelIdParts.join(":");
 
@@ -67,4 +78,4 @@ export const decodeModelValue = (value: string) => {
   }
 
   return null;
-};
+}

@@ -9,8 +9,9 @@ import {
   useEffect,
   useState,
 } from "react";
+import { useApiKeySettings } from "@/components/api-key-settings-provider";
 import { Button } from "@/components/ui/button";
-import type { Provider } from "@/lib/chat-models";
+import { PROVIDER_LABELS, type Provider } from "@/lib/chat-models";
 import { cn } from "@/lib/utils";
 import { ChatModelSelector } from "./model-selector";
 
@@ -45,10 +46,12 @@ interface ChatComposerContextValue {
   disabled: boolean;
   handleModelChange: (selection: ChatComposerModelSelection) => Promise<void>;
   handleSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
+  hasSelectedProviderKey: boolean;
   isModelUpdating: boolean;
   isSubmitBlocked: boolean;
   maxHeightPx: number;
   maxLength: number;
+  openSettings: () => void;
   placeholder: string;
   prompt: string;
   selectedModelId: string;
@@ -87,10 +90,12 @@ export function ChatComposerProvider({
   maxLength = 16_000,
   maxHeightPx = 280,
 }: ChatComposerProviderProps) {
+  const { configuredProviders, openSettings } = useApiKeySettings();
   const [prompt, setPrompt] = useState("");
   const [selectedProvider, setSelectedProvider] =
     useState<Provider>(initialProvider);
   const [selectedModelId, setSelectedModelId] = useState(initialModelId);
+  const hasSelectedProviderKey = configuredProviders[selectedProvider];
 
   useEffect(() => {
     setSelectedProvider(initialProvider);
@@ -103,6 +108,7 @@ export function ChatComposerProvider({
     if (
       !trimmed ||
       disabled ||
+      !hasSelectedProviderKey ||
       isSubmitting ||
       isAssistantStreaming ||
       isModelUpdating
@@ -154,6 +160,7 @@ export function ChatComposerProvider({
 
   const isSubmitBlocked =
     disabled ||
+    !hasSelectedProviderKey ||
     isSubmitting ||
     isAssistantStreaming ||
     isModelUpdating ||
@@ -165,10 +172,12 @@ export function ChatComposerProvider({
         disabled,
         handleModelChange,
         handleSubmit,
+        hasSelectedProviderKey,
         isModelUpdating,
         isSubmitBlocked,
         maxHeightPx,
         maxLength,
+        openSettings,
         placeholder,
         prompt,
         selectedModelId,
@@ -191,7 +200,9 @@ export function ChatComposer({ className }: { className?: string }) {
     handleModelChange,
     handleSubmit,
     disabled,
+    hasSelectedProviderKey,
     isSubmitBlocked,
+    openSettings,
     placeholder,
     submitAriaLabel,
     maxLength,
@@ -238,6 +249,17 @@ export function ChatComposer({ className }: { className?: string }) {
               <SendIcon />
             </Button>
           </div>
+          {hasSelectedProviderKey ? null : (
+            <div className="mt-2 flex items-center justify-between gap-2 px-2 pb-1 text-muted-foreground text-xs">
+              <span>
+                Add your {PROVIDER_LABELS[selectedProvider]} API key to start
+                chatting.
+              </span>
+              <Button onClick={openSettings} size="xs" variant="link">
+                Open settings
+              </Button>
+            </div>
+          )}
         </div>
       </form>
     </div>

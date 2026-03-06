@@ -5,7 +5,28 @@ import { components, internal } from "./_generated/api";
 import { internalQuery, mutation, query } from "./_generated/server";
 import { requireAuth } from "./lib/auth";
 import { DEFAULT_MODELS, SUPPORTED_MODELS } from "./lib/models";
+import {
+  getOwnedThreadContextOrNull,
+  getThreadTitle,
+  toThreadSummary,
+} from "./lib/threadMetadata";
 import { vProvider } from "./schema";
+
+function isPresent<Value>(value: Value | null): value is Value {
+  return value !== null;
+}
+
+export const getConfigInternal = internalQuery({
+  args: {
+    threadId: v.string(),
+  },
+  handler: async (ctx, { threadId }) => {
+    return await ctx.db
+      .query("chats")
+      .withIndex("by_threadId", (q) => q.eq("threadId", threadId))
+      .unique();
+  },
+});
 
 export const create = mutation({
   args: {
@@ -24,14 +45,13 @@ export const create = mutation({
 
     const threadId = await createThread(ctx, components.agent, { userId });
 
-    const chatId = await ctx.db.insert("chats", {
-      userId,
+    await ctx.db.insert("chats", {
       threadId,
       provider,
       modelId: resolvedModelId,
     });
 
-    return { chatId, threadId };
+    return { threadId };
   },
 });
 
@@ -51,26 +71,29 @@ export const createWithFirstMessage = mutation({
       );
     }
 
-    const threadId = await createThread(ctx, components.agent, { userId });
-
-    const chatId = await ctx.db.insert("chats", {
+    const threadId = await createThread(ctx, components.agent, {
+      title: getThreadTitle(prompt),
       userId,
+    });
+
+    await ctx.db.insert("chats", {
       threadId,
       provider,
       modelId: resolvedModelId,
     });
 
     const { messageId } = await saveMessage(ctx, components.agent, {
-      threadId,
       prompt,
+      threadId,
+      userId,
     });
 
     await ctx.scheduler.runAfter(0, internal.chat.generate, {
-      chatId,
       promptMessageId: messageId,
+      threadId,
     });
 
-    return { chatId, threadId, messageId };
+    return { messageId, threadId };
   },
 });
 
@@ -80,97 +103,114 @@ export const list = query({
   },
   handler: async (ctx, { paginationOpts }) => {
     const { userId } = await requireAuth(ctx);
+    const threads = await ctx.runQuery(
+      components.agent.threads.listThreadsByUserId,
+      {
+        order: "desc",
+        paginationOpts,
+        userId,
+      }
+    );
 
-    return await ctx.db
-      .query("chats")
-      .withIndex("by_userId", (q) => q.eq("userId", userId))
-      .order("desc")
-      .paginate(paginationOpts);
+    const page = await Promise.all(
+      threads.page.map(async (thread) => {
+        const config = await ctx.db
+          .query("chats")
+          .withIndex("by_threadId", (q) => q.eq("threadId", thread._id))
+          .unique();
+
+        if (!config) {
+          return null;
+        }
+
+        return toThreadSummary({
+          config,
+          thread: {
+            _creationTime: thread._creationTime,
+            _id: thread._id,
+            status: thread.status,
+            summary: thread.summary,
+            title: thread.title,
+            userId: thread.userId,
+          },
+        });
+      })
+    );
+
+    return {
+      ...threads,
+      page: page.filter(isPresent),
+    };
   },
 });
 
 export const get = query({
   args: {
-    chatId: v.id("chats"),
+    threadId: v.string(),
   },
-  handler: async (ctx, { chatId }) => {
-    const { userId } = await requireAuth(ctx);
-
-    const chat = await ctx.db.get(chatId);
-    if (!chat || chat.userId !== userId) {
+  handler: async (ctx, { threadId }) => {
+    const threadContext = await getOwnedThreadContextOrNull(ctx, threadId);
+    if (!threadContext) {
       return null;
     }
 
-    return chat;
-  },
-});
-
-export const getInternal = internalQuery({
-  args: {
-    chatId: v.id("chats"),
-  },
-  handler: async (ctx, { chatId }) => {
-    const chat = await ctx.db.get(chatId);
-    if (!chat) {
-      throw new Error("Chat not found");
-    }
-    return chat;
+    return toThreadSummary(threadContext);
   },
 });
 
 export const remove = mutation({
   args: {
-    chatId: v.id("chats"),
+    threadId: v.string(),
   },
-  handler: async (ctx, { chatId }) => {
-    const { userId } = await requireAuth(ctx);
-
-    const chat = await ctx.db.get(chatId);
-    if (!chat || chat.userId !== userId) {
+  handler: async (ctx, { threadId }) => {
+    const threadContext = await getOwnedThreadContextOrNull(ctx, threadId);
+    if (!threadContext) {
       throw new Error("Chat not found");
     }
 
-    await ctx.db.delete(chatId);
+    await ctx.db.delete(threadContext.config._id);
+    await ctx.runMutation(components.agent.threads.deleteAllForThreadIdAsync, {
+      threadId,
+    });
   },
 });
 
 export const updateTitle = mutation({
   args: {
-    chatId: v.id("chats"),
+    threadId: v.string(),
     title: v.string(),
   },
-  handler: async (ctx, { chatId, title }) => {
-    const { userId } = await requireAuth(ctx);
-
-    const chat = await ctx.db.get(chatId);
-    if (!chat || chat.userId !== userId) {
+  handler: async (ctx, { threadId, title }) => {
+    const threadContext = await getOwnedThreadContextOrNull(ctx, threadId);
+    if (!threadContext) {
       throw new Error("Chat not found");
     }
 
-    await ctx.db.patch(chatId, { title });
+    await ctx.runMutation(components.agent.threads.updateThread, {
+      patch: { title },
+      threadId,
+    });
   },
 });
 
 export const updateModel = mutation({
   args: {
-    chatId: v.id("chats"),
+    threadId: v.string(),
     provider: vProvider,
     modelId: v.string(),
   },
-  handler: async (ctx, { chatId, provider, modelId }) => {
-    const { userId } = await requireAuth(ctx);
-
+  handler: async (ctx, { threadId, provider, modelId }) => {
     if (!SUPPORTED_MODELS[provider].includes(modelId)) {
       throw new Error(
         `Unsupported model "${modelId}" for provider "${provider}"`
       );
     }
 
-    const chat = await ctx.db.get(chatId);
-    if (!chat || chat.userId !== userId) {
+    const threadContext = await getOwnedThreadContextOrNull(ctx, threadId);
+    if (!threadContext) {
       throw new Error("Chat not found");
     }
 
-    await ctx.db.patch(chatId, { provider, modelId });
+    await ctx.db.patch(threadContext.config._id, { modelId, provider });
   },
 });

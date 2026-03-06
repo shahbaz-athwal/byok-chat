@@ -2,9 +2,9 @@ import { useConvexMutation } from "@convex-dev/react-query";
 import { useMutation } from "@tanstack/react-query";
 import type { FunctionArgs } from "convex/server";
 import { toastManager } from "@/components/ui/toast";
-import { DEFAULT_MODEL_BY_PROVIDER } from "@/lib/chat-models";
+import { DEFAULT_MODEL_BY_PROVIDER, type Provider } from "@/lib/chat-models";
+import type { ThreadListResult } from "@/lib/thread-data";
 import { api } from "../../convex/_generated/api";
-import type { Id } from "../../convex/_generated/dataModel";
 
 interface StartThreadMutationInput {
   modelId: FunctionArgs<typeof api.threads.createWithFirstMessage>["modelId"];
@@ -39,28 +39,27 @@ export function useStartThreadMutation() {
     const currentThreads = localStore.getQuery(
       api.threads.list,
       THREADS_LIST_ARGS
-    );
+    ) as ThreadListResult | undefined;
     if (currentThreads === undefined) {
       return;
     }
 
+    const optimisticProvider = args.provider as Provider;
     const optimisticModelId =
-      args.modelId ?? DEFAULT_MODEL_BY_PROVIDER[args.provider];
+      args.modelId ?? DEFAULT_MODEL_BY_PROVIDER[optimisticProvider];
     const optimisticTitle = args.prompt.trim();
-    const optimisticChat = {
-      _id: crypto.randomUUID() as Id<"chats">,
+    const optimisticThread = {
       _creationTime: Date.now(),
       modelId: optimisticModelId,
-      provider: args.provider,
+      provider: optimisticProvider,
       threadId: crypto.randomUUID(),
       title:
         optimisticTitle.length > 0 ? optimisticTitle.slice(0, 80) : undefined,
-      userId: "optimistic",
     };
 
     localStore.setQuery(api.threads.list, THREADS_LIST_ARGS, {
       ...currentThreads,
-      page: [optimisticChat, ...currentThreads.page].slice(
+      page: [optimisticThread, ...currentThreads.page].slice(
         0,
         THREADS_LIST_ARGS.paginationOpts.numItems
       ),

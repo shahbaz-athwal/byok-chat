@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { KeyIcon } from "lucide-react";
 import { Suspense } from "react";
+import { useApiKeySettings } from "@/components/api-key-settings-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -23,6 +25,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { authClient } from "@/lib/auth-client";
+import type { ThreadListResult, ThreadSummary } from "@/lib/thread-data";
 import { threadsListQuery } from "@/queries/threads";
 
 function SidebarFooterUser() {
@@ -56,10 +59,12 @@ function SidebarFooterUser() {
 }
 
 export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
+  const { openSettings } = useApiKeySettings();
   const navigate = useNavigate();
   const params = useParams({ strict: false });
   const { data: chats, isPending } = useQuery(threadsListQuery());
-  const chatItems = chats?.page ?? [];
+  const chatItems = ((chats as ThreadListResult | undefined)?.page ??
+    []) as ThreadSummary[];
   const showEmptyState = !isPending && chatItems.length === 0;
 
   return (
@@ -68,6 +73,14 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
         <span className="px-2 font-semibold text-base">byok-chat</span>
         <Button className="mt-2 w-full" onClick={() => navigate({ to: "/" })}>
           New Chat
+        </Button>
+        <Button
+          className="mt-2 w-full"
+          onClick={openSettings}
+          variant="outline"
+        >
+          <KeyIcon />
+          API Keys
         </Button>
       </SidebarHeader>
 
@@ -87,15 +100,15 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
             ) : (
               <SidebarMenu>
                 {chatItems.map((chat) => (
-                  <SidebarMenuItem key={chat._id}>
+                  <SidebarMenuItem key={chat.threadId}>
                     <SidebarMenuButton
-                      isActive={params.chatId === chat._id}
+                      isActive={params.threadId === chat.threadId}
                       render={(props) => (
                         <Link
                           {...props}
-                          params={{ chatId: chat._id }}
+                          params={{ threadId: chat.threadId }}
                           preload="intent"
-                          to="/chat/$chatId"
+                          to="/chat/$threadId"
                         />
                       )}
                     >

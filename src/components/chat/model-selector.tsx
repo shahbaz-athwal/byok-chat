@@ -11,7 +11,10 @@ import {
 } from "@/components/ui/select";
 import {
   CHAT_MODEL_OPTIONS,
+  type ChatModelSelection,
+  decodeModelValue,
   encodeModelValue,
+  PROVIDER_LABELS,
   type Provider,
 } from "@/lib/chat-models";
 import { cn } from "@/lib/utils";
@@ -19,16 +22,10 @@ import { cn } from "@/lib/utils";
 interface ChatModelSelectorProps {
   disabled?: boolean;
   modelId: string;
-  onChange: (selection: { provider: Provider; modelId: string }) => void;
+  onChange: (selection: ChatModelSelection) => void;
   provider: Provider;
   triggerClassName?: string;
 }
-
-const providerLabel: Record<Provider, string> = {
-  openai: "OpenAI",
-  google: "Google",
-  anthropic: "Anthropic",
-};
 
 export function ChatModelSelector({
   provider,
@@ -54,15 +51,10 @@ export function ChatModelSelector({
         if (!nextValue) {
           return;
         }
-        const [nextProvider, ...modelIdParts] = nextValue.split(":");
-        const nextModelId = modelIdParts.join(":");
-        if (
-          (nextProvider === "openai" ||
-            nextProvider === "google" ||
-            nextProvider === "anthropic") &&
-          nextModelId
-        ) {
-          onChange({ provider: nextProvider, modelId: nextModelId });
+
+        const nextSelection = decodeModelValue(nextValue);
+        if (nextSelection) {
+          onChange(nextSelection);
         }
       }}
       value={value}
@@ -76,7 +68,9 @@ export function ChatModelSelector({
       <SelectContent>
         {(Object.keys(grouped) as Provider[]).map((groupProvider) => (
           <SelectGroup key={groupProvider}>
-            <SelectGroupLabel>{providerLabel[groupProvider]}</SelectGroupLabel>
+            <SelectGroupLabel>
+              {PROVIDER_LABELS[groupProvider]}
+            </SelectGroupLabel>
             {grouped[groupProvider].map((option) => (
               <SelectItem
                 key={`${option.provider}-${option.modelId}`}

@@ -14,7 +14,6 @@ import {
   useUpdateThreadModelMutation,
 } from "@/mutations/thread";
 import { api } from "../../../convex/_generated/api";
-import type { Id } from "../../../convex/_generated/dataModel";
 import {
   ChatComposer,
   ChatComposerProvider,
@@ -22,9 +21,9 @@ import {
 } from "./chat-composer";
 
 interface ChatThreadProps {
-  chatId: Id<"chats">;
   modelId: string;
   provider: Provider;
+  threadId: string;
 }
 
 function getMessageText(message: UIMessage) {
@@ -38,7 +37,7 @@ function getMessageText(message: UIMessage) {
     .join("");
 }
 
-export function ChatThread({ chatId, provider, modelId }: ChatThreadProps) {
+export function ChatThread({ threadId, provider, modelId }: ChatThreadProps) {
   const sendMessageMutation = useSendThreadMessageMutation();
   const updateModelMutation = useUpdateThreadModelMutation();
 
@@ -46,7 +45,7 @@ export function ChatThread({ chatId, provider, modelId }: ChatThreadProps) {
     // biome-ignore lint/suspicious/noExplicitAny: hook typing does not infer this generated query reference.
     api.messages.list as any,
     {
-      chatId,
+      threadId,
     },
     {
       initialNumItems: 20,
@@ -63,7 +62,7 @@ export function ChatThread({ chatId, provider, modelId }: ChatThreadProps) {
     lastMessage?.role === "assistant" && lastMessage.status === "pending";
 
   async function handleSubmit({ prompt }: ChatComposerSubmitPayload) {
-    await sendMessageMutation.mutateAsync({ chatId, prompt });
+    await sendMessageMutation.mutateAsync({ prompt, threadId });
   }
 
   async function handleModelChange(selection: {
@@ -77,9 +76,9 @@ export function ChatThread({ chatId, provider, modelId }: ChatThreadProps) {
     }
 
     await updateModelMutation.mutateAsync({
-      chatId,
       modelId: selection.modelId,
       provider: selection.provider,
+      threadId,
     });
   }
 

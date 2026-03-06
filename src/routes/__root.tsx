@@ -4,13 +4,15 @@ import {
   redirect,
   useLocation,
 } from "@tanstack/react-router";
+import { ApiKeySettingsProvider } from "@/components/api-key-settings-provider";
 import { AppSidebar } from "@/components/app-sidebar";
-import { authClient } from "@/lib/auth-client";
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { authClient } from "@/lib/auth-client";
+import { apiKeysListQuery } from "@/queries/api-keys";
 import { threadsListQuery } from "@/queries/threads";
 import type { RouterContext } from "@/router";
 
@@ -32,7 +34,10 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       });
     }
 
-    await context.queryClient.ensureQueryData(threadsListQuery());
+    await Promise.all([
+      context.queryClient.ensureQueryData(apiKeysListQuery()),
+      context.queryClient.ensureQueryData(threadsListQuery()),
+    ]);
   },
   component: RootComponent,
 });
@@ -50,12 +55,14 @@ function RootComponent() {
   }
 
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset className="h-svh min-h-0 overflow-hidden">
-        <SidebarTrigger className="absolute top-2 left-2 z-30" />
-        <Outlet />
-      </SidebarInset>
-    </SidebarProvider>
+    <ApiKeySettingsProvider>
+      <SidebarProvider>
+        <AppSidebar />
+        <SidebarInset className="h-svh min-h-0 overflow-hidden">
+          <SidebarTrigger className="absolute top-2 left-2 z-30" />
+          <Outlet />
+        </SidebarInset>
+      </SidebarProvider>
+    </ApiKeySettingsProvider>
   );
 }

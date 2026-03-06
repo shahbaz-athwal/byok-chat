@@ -19,12 +19,8 @@ export default defineSchema({
     .index("by_userId_provider", ["userId", "provider"]),
 
   chats: defineTable({
-    userId: v.string(),
     threadId: v.string(),
     provider: vProvider,
     modelId: v.string(),
-    title: v.optional(v.string()),
-  })
-    .index("by_userId", ["userId"])
-    .index("by_threadId", ["threadId"]),
+  }).index("by_threadId", ["threadId"]),
 });

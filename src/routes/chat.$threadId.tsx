@@ -7,25 +7,25 @@ import {
   EmptyHeader,
   EmptyTitle,
 } from "@/components/ui/empty";
+import type { ThreadSummary } from "@/lib/thread-data";
 import { messagesListQuery, threadGetQuery } from "@/queries/threads";
-import type { Id } from "../../convex/_generated/dataModel";
 
-export const Route = createFileRoute("/chat/$chatId")({
+export const Route = createFileRoute("/chat/$threadId")({
   loader: async ({ context, params }) => {
-    const chatId = params.chatId as Id<"chats">;
+    const { threadId } = params;
 
     await Promise.all([
-      context.queryClient.ensureQueryData(threadGetQuery(chatId)),
-      context.queryClient.ensureQueryData(messagesListQuery(chatId)),
+      context.queryClient.ensureQueryData(threadGetQuery(threadId)),
+      context.queryClient.ensureQueryData(messagesListQuery(threadId)),
     ]);
   },
   component: ChatPage,
 });
 
 function ChatPage() {
-  const { chatId: rawChatId } = Route.useParams();
-  const chatId = rawChatId as Id<"chats">;
-  const { data: chat } = useSuspenseQuery(threadGetQuery(chatId));
+  const { threadId } = Route.useParams();
+  const { data: chatData } = useSuspenseQuery(threadGetQuery(threadId));
+  const chat = (chatData as ThreadSummary | null | undefined) ?? null;
 
   if (chat === undefined) {
     return (
@@ -50,9 +50,9 @@ function ChatPage() {
 
   return (
     <ChatThread
-      chatId={chatId}
       modelId={chat.modelId}
       provider={chat.provider}
+      threadId={threadId}
     />
   );
 }

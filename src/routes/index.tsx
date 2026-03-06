@@ -1,14 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
+import { useApiKeySettings } from "@/components/api-key-settings-provider";
 import {
   ChatComposer,
   ChatComposerProvider,
   type ChatComposerSubmitPayload,
 } from "@/components/chat/chat-composer";
+import { Button } from "@/components/ui/button";
 import {
+  type ChatModelSelection,
   DEFAULT_MODEL_BY_PROVIDER,
   DEFAULT_PROVIDER,
-  type Provider,
+  PROVIDER_LABELS,
 } from "@/lib/chat-models";
 import { useStartThreadMutation } from "@/mutations/thread";
 
@@ -19,40 +22,47 @@ const COMMON_QUESTIONS = [
   "What is the meaning of life?",
 ];
 
-interface ChatModelSelection {
-  modelId: string;
-  provider: Provider;
-}
-
 export const Route = createFileRoute("/")({
   component: HomePage,
 });
 
 function HomePage() {
+  const { configuredProviders, openSettings } = useApiKeySettings();
   const navigate = Route.useNavigate();
   const startThreadMutation = useStartThreadMutation();
   const [selectedProvider, setSelectedProvider] = useState(DEFAULT_PROVIDER);
   const [selectedModelId, setSelectedModelId] = useState(
     DEFAULT_MODEL_BY_PROVIDER[DEFAULT_PROVIDER]
   );
+  const hasSelectedProviderKey = configuredProviders[selectedProvider];
 
   async function handleStartChat({
     prompt: message,
     provider,
     modelId,
   }: ChatComposerSubmitPayload) {
-    const { chatId } = await startThreadMutation.mutateAsync({
+    if (!configuredProviders[provider]) {
+      openSettings();
+      return;
+    }
+
+    const { threadId } = await startThreadMutation.mutateAsync({
       modelId,
       prompt: message,
       provider,
     });
     navigate({
-      params: { chatId },
-      to: "/chat/$chatId",
+      params: { threadId },
+      to: "/chat/$threadId",
     });
   }
 
   async function handleCommonQuestionSelect(prompt: string) {
+    if (!hasSelectedProviderKey) {
+      openSettings();
+      return;
+    }
+
     await handleStartChat({
       modelId: selectedModelId,
       prompt,
@@ -78,6 +88,17 @@ function HomePage() {
               Ask anything, or start with one of these common questions.
             </p>
           </div>
+          {hasSelectedProviderKey ? null : (
+            <div className="mb-6 flex w-full items-center justify-between gap-3 rounded-2xl border border-border/60 bg-muted/35 px-4 py-3">
+              <p className="text-muted-foreground text-sm">
+                Add your {PROVIDER_LABELS[selectedProvider]} API key before you
+                start a new chat.
+              </p>
+              <Button onClick={openSettings} size="sm" variant="outline">
+                Open settings
+              </Button>
+            </div>
+          )}
           <ul className="w-full divide-y divide-border/60">
             {COMMON_QUESTIONS.map((question) => (
               <li key={question}>
