@@ -1,8 +1,7 @@
 "use client";
 
-import type { UIMessage } from "@convex-dev/agent";
+import { type UIMessage, useUIMessages } from "@convex-dev/agent/react";
 import type { Provider } from "@shared/chat-models";
-import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import {
   Message,
@@ -13,7 +12,7 @@ import {
   useSendThreadMessageMutation,
   useUpdateThreadModelMutation,
 } from "@/mutations/thread";
-import { messagesListQuery } from "@/queries/threads";
+import { api } from "../../../convex/_generated/api";
 import {
   ChatComposer,
   ChatComposerProvider,
@@ -40,15 +39,20 @@ function getMessageText(message: UIMessage) {
 export function ChatThread({ threadId, provider, modelId }: ChatThreadProps) {
   const sendMessageMutation = useSendThreadMessageMutation();
   const updateModelMutation = useUpdateThreadModelMutation();
-  const { data } = useQuery(messagesListQuery(threadId));
+  const { results } = useUIMessages(
+    api.messages.list,
+    { threadId },
+    { initialNumItems: 50, stream: true }
+  );
 
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLDivElement>(null);
   const [composerHeight, setComposerHeight] = useState(0);
-  const messages: UIMessage[] = data?.page ?? [];
+  const messages: UIMessage[] = results;
   const lastMessage = messages.at(-1);
   const isAssistantStreaming =
-    lastMessage?.role === "assistant" && lastMessage.status === "pending";
+    lastMessage?.role === "assistant" &&
+    (lastMessage.status === "pending" || lastMessage.status === "streaming");
 
   async function handleSubmit({ prompt }: ChatComposerSubmitPayload) {
     await sendMessageMutation.mutateAsync({ prompt, threadId });

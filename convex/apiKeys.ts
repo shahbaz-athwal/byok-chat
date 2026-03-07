@@ -28,6 +28,7 @@ export const save = mutation({
 
     if (existing) {
       await ctx.db.patch(existing._id, { apiKey });
+      return;
     }
 
     await ctx.db.insert("apiKeys", { userId, provider, apiKey });

@@ -1,5 +1,5 @@
 import { createThread } from "@convex-dev/agent";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { getOneFromOrThrow } from "convex-helpers/server/relationships";
 import { resolveRequestedModelOrThrow } from "../shared/chat-models";
 import { components } from "./_generated/api";
@@ -9,6 +9,7 @@ import {
   type QueryCtx,
   query,
 } from "./_generated/server";
+import { queuePromptGeneration } from "./chat";
 import { requireAuth } from "./lib/auth";
 import { vProvider } from "./schema";
 
@@ -16,30 +17,49 @@ export async function getOwnedThreadContextOrThrow(
   ctx: QueryCtx | MutationCtx,
   threadId: string
 ) {
-  await requireAuth(ctx);
-  return getOneFromOrThrow(ctx.db, "threadConfig", "by_threadId", threadId);
+  const { userId } = await requireAuth(ctx);
+  const thread = await getOneFromOrThrow(
+    ctx.db,
+    "threadConfig",
+    "by_threadId",
+    threadId
+  );
+
+  if (thread.userId !== userId) {
+    throw new ConvexError("Thread not found");
+  }
+
+  return thread;
 }
 export const start = mutation({
   args: {
     prompt: v.string(),
     provider: vProvider,
-    modelSlug: v.string(),
+    modelId: v.string(),
   },
-  handler: async (ctx, { provider, modelSlug }) => {
+  handler: async (ctx, { prompt, provider, modelId }) => {
     const { userId } = await requireAuth(ctx);
-    resolveRequestedModelOrThrow(provider, modelSlug);
+    resolveRequestedModelOrThrow(provider, modelId);
 
     const threadId = await createThread(ctx, components.agent, { userId });
 
     await ctx.db.insert("threadConfig", {
+      modelId,
       status: "active",
       userId,
       threadId,
       provider,
-      modelSlug,
     });
 
-    // kick off generation
+    await queuePromptGeneration(ctx, {
+      modelId,
+      prompt,
+      provider,
+      threadId,
+      userId,
+    });
+
+    return { threadId };
   },
 });
 
@@ -96,12 +116,12 @@ export const updateModel = mutation({
   args: {
     threadId: v.string(),
     provider: vProvider,
-    modelSlug: v.string(),
+    modelId: v.string(),
   },
-  handler: async (ctx, { threadId, provider, modelSlug }) => {
-    resolveRequestedModelOrThrow(provider, modelSlug);
+  handler: async (ctx, { threadId, provider, modelId }) => {
+    resolveRequestedModelOrThrow(provider, modelId);
 
     const thread = await getOwnedThreadContextOrThrow(ctx, threadId);
-    await ctx.db.patch(thread._id, { modelSlug, provider });
+    await ctx.db.patch(thread._id, { modelId, provider });
   },
 });

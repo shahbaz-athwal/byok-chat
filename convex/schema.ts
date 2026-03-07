@@ -20,7 +20,7 @@ export const schema = defineSchema({
     status: literals("active", "archived"),
     threadId: v.string(),
     provider: vProvider,
-    modelSlug: v.string(),
+    modelId: v.string(),
   })
     .index("by_threadId", ["threadId"])
     .index("by_userId", ["userId"]),

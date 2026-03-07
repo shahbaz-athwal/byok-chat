@@ -2,12 +2,31 @@ import { listUIMessages, syncStreams, vStreamArgs } from "@convex-dev/agent";
 import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import { components } from "./_generated/api";
-import { query } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
+import { queuePromptGeneration } from "./chat";
 import { getOwnedThreadContextOrThrow } from "./threads";
+
+export const send = mutation({
+  args: {
+    prompt: v.string(),
+    threadId: v.string(),
+  },
+  handler: async (ctx, { threadId, prompt }) => {
+    const thread = await getOwnedThreadContextOrThrow(ctx, threadId);
+
+    await queuePromptGeneration(ctx, {
+      modelId: thread.modelId,
+      prompt,
+      provider: thread.provider,
+      threadId,
+      userId: thread.userId,
+    });
+  },
+});
 
 export const list = query({
   args: {
-    threadId: v.id("chats"),
+    threadId: v.string(),
     paginationOpts: paginationOptsValidator,
     streamArgs: vStreamArgs,
   },

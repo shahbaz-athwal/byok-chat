@@ -1,7 +1,6 @@
 "use client";
 
 import { PROVIDER_LABELS, PROVIDERS, type Provider } from "@shared/chat-models";
-import type { ApiKeyListEntry } from "@shared/contracts";
 import { useQuery } from "@tanstack/react-query";
 import { KeyIcon } from "lucide-react";
 import { createContext, type ReactNode, useContext, useState } from "react";
@@ -182,7 +181,7 @@ export function ApiKeySettingsProvider({
   const configuredProviders = createEmptyProviderConfiguration();
   const maskedKeys = createEmptyProviderMaskedKeys();
   const modelsByProvider = createEmptyProviderModels();
-  const apiKeyEntries: readonly ApiKeyListEntry[] = data ?? [];
+  const apiKeyEntries = data ?? [];
 
   for (const keyEntry of apiKeyEntries) {
     configuredProviders[keyEntry.provider] = true;
