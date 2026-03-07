@@ -4,11 +4,14 @@ import {
   type UIMessage,
   useStreamingUIMessages,
 } from "@convex-dev/agent/react";
-import { useSuspenseQuery } from "@tanstack/react-query";
 import type { Provider } from "@shared/chat-models";
+import { useSuspenseQuery } from "@tanstack/react-query";
+import { ArrowDownIcon } from "lucide-react";
 import { type CSSProperties, useEffect, useRef, useState } from "react";
+import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
 import { AssistantMessageMarkdown } from "@/components/chat/assistant-message-markdown";
 import { ChatMessage, ChatMessageBubble } from "@/components/chat/chat-message";
+import { Button } from "@/components/ui/button";
 import {
   useSendThreadMessageMutation,
   useUpdateThreadModelMutation,
@@ -98,6 +101,34 @@ function normalizeChatMessage(
   };
 }
 
+function ScrollToBottomButton() {
+  const { isAtBottom, scrollToBottom } = useStickToBottomContext();
+
+  if (isAtBottom) {
+    return null;
+  }
+
+  return (
+    <div
+      className="pointer-events-none absolute inset-x-0 z-100 flex justify-center"
+      style={{
+        bottom: "calc(var(--chat-composer-height) + 0.75rem)",
+      }}
+    >
+      <Button
+        aria-label="Scroll to latest message"
+        className="pointer-events-auto rounded-full shadow-lg"
+        onClick={() => scrollToBottom()}
+        size="icon"
+        type="button"
+        variant="secondary"
+      >
+        <ArrowDownIcon />
+      </Button>
+    </div>
+  );
+}
+
 export function ChatThread({ threadId, provider, modelId }: ChatThreadProps) {
   const sendMessageMutation = useSendThreadMessageMutation();
   const updateModelMutation = useUpdateThreadModelMutation();
@@ -174,8 +205,15 @@ export function ChatThread({ threadId, provider, modelId }: ChatThreadProps) {
         } as CSSProperties
       }
     >
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
-        <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-4 pb-[calc(var(--chat-composer-height)+1rem)] sm:px-6">
+      <StickToBottom
+        className="relative min-h-0 flex-1"
+        initial="instant"
+        resize="smooth"
+      >
+        <StickToBottom.Content
+          className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-4 pb-[calc(var(--chat-composer-height)+1rem)] sm:px-6"
+          scrollClassName="min-h-0 h-full overflow-y-auto overscroll-y-contain"
+        >
           {messages.length === 0 ? (
             <p className="text-muted-foreground text-sm">No messages yet.</p>
           ) : null}
@@ -193,8 +231,9 @@ export function ChatThread({ threadId, provider, modelId }: ChatThreadProps) {
               </ChatMessage>
             );
           })}
-        </div>
-      </div>
+        </StickToBottom.Content>
+        <ScrollToBottomButton />
+      </StickToBottom>
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20">
         <div className="pointer-events-auto" ref={composerRef}>
           <ChatComposerProvider
