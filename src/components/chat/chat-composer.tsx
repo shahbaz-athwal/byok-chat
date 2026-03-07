@@ -5,6 +5,7 @@ import { SendIcon } from "lucide-react";
 import {
   createContext,
   type FormEvent,
+  type KeyboardEvent,
   type ReactNode,
   useContext,
   useEffect,
@@ -210,6 +211,22 @@ export function ChatComposer({ className }: { className?: string }) {
     isModelUpdating,
   } = useChatComposerContext();
 
+  function handlePromptKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (
+      event.key !== "Enter" ||
+      event.shiftKey ||
+      event.altKey ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.nativeEvent.isComposing
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    event.currentTarget.form?.requestSubmit();
+  }
+
   return (
     <div
       className={cn(
@@ -227,6 +244,7 @@ export function ChatComposer({ className }: { className?: string }) {
             disabled={disabled || isModelUpdating}
             maxLength={maxLength}
             onChange={(event) => setPrompt(event.target.value)}
+            onKeyDown={handlePromptKeyDown}
             placeholder={placeholder}
             style={{ maxHeight: `${maxHeightPx}px` }}
             value={prompt}

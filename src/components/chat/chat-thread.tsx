@@ -37,6 +37,7 @@ interface ChatThreadProps {
 
 interface ChatRenderableMessage {
   content: string;
+  isStreaming: boolean;
   key: string;
   role: "assistant" | "user";
 }
@@ -103,6 +104,7 @@ function normalizeChatMessage(
     key: message.key,
     role: message.role,
     content: getMessageText(message),
+    isStreaming: message.status === "streaming",
   };
 }
 
@@ -301,7 +303,10 @@ export function ChatThread({
               <ChatMessage key={message.key} role={message.role}>
                 <ChatMessageBubble role={message.role}>
                   {message.role === "assistant" ? (
-                    <AssistantMessageMarkdown markdown={message.content} />
+                    <AssistantMessageMarkdown
+                      markdown={message.content}
+                      smooth={message.isStreaming}
+                    />
                   ) : (
                     message.content
                   )}

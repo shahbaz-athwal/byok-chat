@@ -1,5 +1,6 @@
 "use client";
 
+import { useSmoothText } from "@convex-dev/agent/react";
 import { Streamdown } from "streamdown";
 import { cn } from "@/lib/utils";
 
@@ -14,6 +15,7 @@ export interface AssistantMarkdownRendererProps {
   className?: string;
   features?: Partial<AssistantMarkdownFeatures>;
   markdown: string;
+  smooth?: boolean;
 }
 
 const DEFAULT_ASSISTANT_MARKDOWN_FEATURES: AssistantMarkdownFeatures = {
@@ -65,12 +67,16 @@ export function AssistantMessageMarkdown({
   className,
   features,
   markdown,
+  smooth = false,
 }: AssistantMarkdownRendererProps) {
   const resolvedFeatures: AssistantMarkdownFeatures = {
     ...DEFAULT_ASSISTANT_MARKDOWN_FEATURES,
     ...features,
   };
   const plugins = buildAssistantMarkdownPlugins(resolvedFeatures);
+  const [visibleMarkdown] = useSmoothText(markdown, {
+    startStreaming: smooth,
+  });
 
   return (
     <Streamdown
@@ -80,7 +86,7 @@ export function AssistantMessageMarkdown({
       )}
       plugins={plugins}
     >
-      {markdown}
+      {visibleMarkdown}
     </Streamdown>
   );
 }
