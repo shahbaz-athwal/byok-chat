@@ -2,12 +2,9 @@
 
 import { type UIMessage, useUIMessages } from "@convex-dev/agent/react";
 import type { Provider } from "@shared/chat-models";
-import { useEffect, useRef, useState } from "react";
-import {
-  Message,
-  MessageContent,
-  MessageResponse,
-} from "@/components/ai-elements/message";
+import { type CSSProperties, useEffect, useRef, useState } from "react";
+import { AssistantMessageMarkdown } from "@/components/chat/assistant-message-markdown";
+import { ChatMessage, ChatMessageBubble } from "@/components/chat/chat-message";
 import {
   useSendThreadMessageMutation,
   useUpdateThreadModelMutation,
@@ -25,6 +22,12 @@ interface ChatThreadProps {
   threadId: string;
 }
 
+interface ChatRenderableMessage {
+  content: string;
+  key: string;
+  role: "assistant" | "user";
+}
+
 function getMessageText(message: UIMessage) {
   if (message.text.trim().length > 0) {
     return message.text;
@@ -36,6 +39,20 @@ function getMessageText(message: UIMessage) {
     .join("");
 }
 
+function normalizeChatMessage(
+  message: UIMessage
+): ChatRenderableMessage | null {
+  if (message.role !== "assistant" && message.role !== "user") {
+    return null;
+  }
+
+  return {
+    key: message.key,
+    role: message.role,
+    content: getMessageText(message),
+  };
+}
+
 export function ChatThread({ threadId, provider, modelId }: ChatThreadProps) {
   const sendMessageMutation = useSendThreadMessageMutation();
   const updateModelMutation = useUpdateThreadModelMutation();
@@ -45,11 +62,12 @@ export function ChatThread({ threadId, provider, modelId }: ChatThreadProps) {
     { initialNumItems: 50, stream: true }
   );
 
-  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLDivElement>(null);
   const [composerHeight, setComposerHeight] = useState(0);
-  const messages: UIMessage[] = results;
-  const lastMessage = messages.at(-1);
+  const messages: ChatRenderableMessage[] = results
+    .map(normalizeChatMessage)
+    .filter((message): message is ChatRenderableMessage => message !== null);
+  const lastMessage = results.at(-1);
   const isAssistantStreaming =
     lastMessage?.role === "assistant" &&
     (lastMessage.status === "pending" || lastMessage.status === "streaming");
@@ -99,32 +117,26 @@ export function ChatThread({ threadId, provider, modelId }: ChatThreadProps) {
       style={
         {
           "--chat-composer-height": `${composerHeight}px`,
-        } as React.CSSProperties
+        } as CSSProperties
       }
     >
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
-        <div
-          className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-4 pb-[calc(var(--chat-composer-height)+1rem)] sm:px-6"
-          ref={messagesContainerRef}
-        >
+        <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-4 pb-[calc(var(--chat-composer-height)+1rem)] sm:px-6">
           {messages.length === 0 ? (
             <p className="text-muted-foreground text-sm">No messages yet.</p>
           ) : null}
 
           {messages.map((message) => {
-            const messageText = getMessageText(message);
-
             return (
-              <Message
-                from={message.role === "assistant" ? "assistant" : "user"}
-                key={message.key}
-              >
-                <MessageContent>
-                  {messageText ? (
-                    <MessageResponse>{messageText}</MessageResponse>
-                  ) : null}
-                </MessageContent>
-              </Message>
+              <ChatMessage key={message.key} role={message.role}>
+                <ChatMessageBubble role={message.role}>
+                  {message.role === "assistant" ? (
+                    <AssistantMessageMarkdown markdown={message.content} />
+                  ) : (
+                    message.content
+                  )}
+                </ChatMessageBubble>
+              </ChatMessage>
             );
           })}
         </div>
