@@ -7,13 +7,17 @@ import {
   EmptyHeader,
   EmptyTitle,
 } from "@/components/ui/empty";
+import { threadMessagesQuery } from "@/queries/messages";
 import { threadGetQuery } from "@/queries/threads";
 
 export const Route = createFileRoute("/chat/$threadId")({
   loader: async ({ context, params }) => {
     const { threadId } = params;
 
-    await context.queryClient.ensureQueryData(threadGetQuery(threadId));
+    await Promise.all([
+      context.queryClient.ensureQueryData(threadGetQuery(threadId)),
+      context.queryClient.ensureQueryData(threadMessagesQuery(threadId)),
+    ]);
   },
   component: ChatPage,
 });

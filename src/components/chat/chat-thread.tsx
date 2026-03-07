@@ -1,6 +1,10 @@
 "use client";
 
-import { type UIMessage, useUIMessages } from "@convex-dev/agent/react";
+import {
+  type UIMessage,
+  useStreamingUIMessages,
+} from "@convex-dev/agent/react";
+import { useSuspenseQuery } from "@tanstack/react-query";
 import type { Provider } from "@shared/chat-models";
 import { type CSSProperties, useEffect, useRef, useState } from "react";
 import { AssistantMessageMarkdown } from "@/components/chat/assistant-message-markdown";
@@ -9,6 +13,7 @@ import {
   useSendThreadMessageMutation,
   useUpdateThreadModelMutation,
 } from "@/mutations/thread";
+import { threadMessagesQuery } from "@/queries/messages";
 import { api } from "../../../convex/_generated/api";
 import {
   ChatComposer,
@@ -26,6 +31,46 @@ interface ChatRenderableMessage {
   content: string;
   key: string;
   role: "assistant" | "user";
+}
+
+interface DedupedMessageKey {
+  order: number;
+  stepOrder: number;
+}
+
+function compareMessages(left: DedupedMessageKey, right: DedupedMessageKey) {
+  if (left.order !== right.order) {
+    return left.order - right.order;
+  }
+
+  return left.stepOrder - right.stepOrder;
+}
+
+function dedupeMessages(messages: UIMessage[], streamMessages: UIMessage[]) {
+  return [...messages, ...streamMessages]
+    .sort(compareMessages)
+    .reduce((dedupedMessages, message) => {
+      const previousMessage = dedupedMessages.at(-1);
+
+      if (
+        !previousMessage ||
+        previousMessage.order !== message.order ||
+        previousMessage.stepOrder !== message.stepOrder
+      ) {
+        dedupedMessages.push(message);
+        return dedupedMessages;
+      }
+
+      if (
+        (previousMessage.status === "pending" ||
+          previousMessage.status === "streaming") &&
+        message.status !== "pending"
+      ) {
+        dedupedMessages[dedupedMessages.length - 1] = message;
+      }
+
+      return dedupedMessages;
+    }, [] as UIMessage[]);
 }
 
 function getMessageText(message: UIMessage) {
@@ -56,11 +101,20 @@ function normalizeChatMessage(
 export function ChatThread({ threadId, provider, modelId }: ChatThreadProps) {
   const sendMessageMutation = useSendThreadMessageMutation();
   const updateModelMutation = useUpdateThreadModelMutation();
-  const { results } = useUIMessages(
+  const { data } = useSuspenseQuery(threadMessagesQuery(threadId));
+  const startOrder = data.page.length > 0 ? data.page[0].order : 0;
+  const streamMessages = useStreamingUIMessages(
     api.messages.list,
-    { threadId },
-    { initialNumItems: 50, stream: true }
+    {
+      paginationOpts: {
+        cursor: null,
+        numItems: 0,
+      },
+      threadId,
+    },
+    { startOrder }
   );
+  const results = dedupeMessages(data.page, streamMessages ?? []);
 
   const composerRef = useRef<HTMLDivElement>(null);
   const [composerHeight, setComposerHeight] = useState(0);
