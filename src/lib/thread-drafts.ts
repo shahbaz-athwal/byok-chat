@@ -18,6 +18,9 @@ export interface ThreadListResult
 export interface ActivateDraftAndSendArgs
   extends FunctionArgs<typeof api.threads.activateDraftAndSend> {}
 
+export interface SendThreadMessageArgs
+  extends FunctionArgs<typeof api.messages.send> {}
+
 export interface OptimisticMessageArgs {
   order: number;
   prompt: string;
@@ -87,6 +90,31 @@ function getThreadMessagesResult(
   );
 }
 
+function appendOptimisticUserMessage(
+  localStore: OptimisticLocalStore,
+  args: {
+    prompt: string;
+    threadId: string;
+  }
+) {
+  const messagesArgs = getThreadMessagesQueryArgs(args.threadId);
+  const currentMessages = getThreadMessagesResult(localStore, messagesArgs);
+  const optimisticMessage = createOptimisticUserMessage({
+    order: getNextMessageOrder(currentMessages.page) + 1,
+    prompt: args.prompt,
+    threadId: args.threadId,
+  });
+
+  localStore.setQuery(api.messages.list, messagesArgs, {
+    ...currentMessages,
+    page: [...currentMessages.page, optimisticMessage],
+    streams: currentMessages.streams ?? {
+      kind: "list",
+      messages: [],
+    },
+  });
+}
+
 export function deriveThreadTitle(prompt: string) {
   const firstNonEmptyLine =
     prompt
@@ -123,20 +151,18 @@ export function applyActivateDraftOptimisticUpdate(
     upsertThreadInList(currentThreads ?? [], nextThread)
   );
 
-  const messagesArgs = getThreadMessagesQueryArgs(args.threadId);
-  const currentMessages = getThreadMessagesResult(localStore, messagesArgs);
-  const optimisticMessage = createOptimisticUserMessage({
-    order: getNextMessageOrder(currentMessages.page) + 1,
+  appendOptimisticUserMessage(localStore, {
     prompt: args.prompt,
     threadId: args.threadId,
   });
+}
 
-  localStore.setQuery(api.messages.list, messagesArgs, {
-    ...currentMessages,
-    page: [...currentMessages.page, optimisticMessage],
-    streams: currentMessages.streams ?? {
-      kind: "list",
-      messages: [],
-    },
+export function applySendThreadMessageOptimisticUpdate(
+  localStore: OptimisticLocalStore,
+  args: SendThreadMessageArgs
+) {
+  appendOptimisticUserMessage(localStore, {
+    prompt: args.prompt,
+    threadId: args.threadId,
   });
 }

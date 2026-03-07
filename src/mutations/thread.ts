@@ -1,7 +1,10 @@
 import { useConvexMutation } from "@convex-dev/react-query";
 import { useMutation } from "@tanstack/react-query";
 import { toastManager } from "@/components/ui/toast";
-import { applyActivateDraftOptimisticUpdate } from "@/lib/thread-drafts";
+import {
+  applyActivateDraftOptimisticUpdate,
+  applySendThreadMessageOptimisticUpdate,
+} from "@/lib/thread-drafts";
 import { api } from "../../convex/_generated/api";
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -61,8 +64,14 @@ export function useActivateDraftAndSendMutation() {
 }
 
 export function useSendThreadMessageMutation() {
+  const sendThreadMessageMutation = useConvexMutation(
+    api.messages.send
+  ).withOptimisticUpdate((localStore, args) => {
+    applySendThreadMessageOptimisticUpdate(localStore, args);
+  });
+
   return useMutation({
-    mutationFn: useConvexMutation(api.messages.send),
+    mutationFn: sendThreadMessageMutation,
     onError: (error) => {
       showMutationErrorToast(
         "Failed to send message",

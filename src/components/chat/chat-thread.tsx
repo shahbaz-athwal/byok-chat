@@ -11,6 +11,7 @@ import { type CSSProperties, useEffect, useRef, useState } from "react";
 import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
 import { AssistantMessageMarkdown } from "@/components/chat/assistant-message-markdown";
 import { ChatMessage, ChatMessageBubble } from "@/components/chat/chat-message";
+import { ChatTypingIndicator } from "@/components/chat/chat-typing-indicator";
 import { useDraftThread } from "@/components/draft-thread-provider";
 import { Button } from "@/components/ui/button";
 import { deriveThreadTitle } from "@/lib/thread-drafts";
@@ -105,6 +106,38 @@ function normalizeChatMessage(
   };
 }
 
+function findLastUserMessageIndex(messages: UIMessage[]) {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    if (messages[index].role === "user") {
+      return index;
+    }
+  }
+
+  return -1;
+}
+
+function hasRenderableAssistantReply(
+  messages: UIMessage[],
+  lastUserMessageIndex: number
+) {
+  for (
+    let index = lastUserMessageIndex + 1;
+    index < messages.length;
+    index += 1
+  ) {
+    const message = messages[index];
+    if (message.role !== "assistant") {
+      continue;
+    }
+
+    if (getMessageText(message).trim().length > 0) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 function ScrollToBottomButton() {
   const { isAtBottom, scrollToBottom } = useStickToBottomContext();
 
@@ -173,6 +206,16 @@ export function ChatThread({
     results.some(
       (message) => message.role === "user" && message.status === "pending"
     ) && !hasSettledMessages;
+  const lastUserMessageIndex = findLastUserMessageIndex(results);
+  const hasRenderableAssistantReplyAfterLastUser =
+    lastUserMessageIndex >= 0 &&
+    hasRenderableAssistantReply(results, lastUserMessageIndex);
+  const hasPendingReplyRequest =
+    sendMessageMutation.isPending || activateDraftAndSendMutation.isPending;
+  // Keep the indicator visible until assistant content is actually renderable.
+  const isAwaitingAssistantReply =
+    hasPendingReplyRequest ||
+    (lastUserMessageIndex >= 0 && !hasRenderableAssistantReplyAfterLastUser);
 
   async function handleSubmit({
     prompt,
@@ -266,6 +309,8 @@ export function ChatThread({
               </ChatMessage>
             );
           })}
+
+          {isAwaitingAssistantReply ? <ChatTypingIndicator /> : null}
         </StickToBottom.Content>
         <ScrollToBottomButton />
       </StickToBottom>
