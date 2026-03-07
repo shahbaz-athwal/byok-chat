@@ -11,7 +11,10 @@ import {
   ChatComposerProvider,
   type ChatComposerSubmitPayload,
 } from "@/components/chat/chat-composer";
-import { useStartThreadMutation } from "@/mutations/thread";
+import { useDraftThread } from "@/components/draft-thread-provider";
+import { toastManager } from "@/components/ui/toast";
+import { deriveThreadTitle } from "@/lib/thread-drafts";
+import { useActivateDraftAndSendMutation } from "@/mutations/thread";
 
 const COMMON_QUESTIONS = [
   "How does AI work?",
@@ -26,12 +29,14 @@ export const Route = createFileRoute("/")({
 
 function HomePage() {
   const { configuredProviders, openSettings } = useApiKeySettings();
+  const { consumeDraftThreadId, ensureDraftThreadId } = useDraftThread();
   const navigate = Route.useNavigate();
-  const startThreadMutation = useStartThreadMutation();
+  const activateDraftAndSendMutation = useActivateDraftAndSendMutation();
   const [selectedProvider, setSelectedProvider] = useState(DEFAULT_PROVIDER);
   const [selectedModelId, setSelectedModelId] = useState(
     DEFAULT_MODEL_BY_PROVIDER[DEFAULT_PROVIDER]
   );
+  const [isStartingChat, setIsStartingChat] = useState(false);
   const hasSelectedProviderKey = configuredProviders[selectedProvider];
 
   async function handleStartChat({
@@ -44,15 +49,43 @@ function HomePage() {
       return;
     }
 
-    const { threadId } = await startThreadMutation.mutateAsync({
-      modelId,
-      prompt: message,
-      provider,
-    });
-    navigate({
-      params: { threadId },
-      to: "/chat/$threadId",
-    });
+    setIsStartingChat(true);
+
+    try {
+      const title = deriveThreadTitle(message);
+      let threadId: string;
+
+      try {
+        threadId = await ensureDraftThreadId();
+      } catch (error) {
+        toastManager.add({
+          description:
+            error instanceof Error ? error.message : "Could not prepare chat",
+          title: "Failed to prepare chat",
+          type: "error",
+        });
+        throw error;
+      }
+
+      const startThreadPromise = activateDraftAndSendMutation.mutateAsync({
+        modelId,
+        prompt: message,
+        provider,
+        threadId,
+        title,
+      });
+
+      navigate({
+        params: { threadId },
+        to: "/chat/$threadId",
+      });
+
+      await startThreadPromise;
+      consumeDraftThreadId(threadId);
+      return;
+    } finally {
+      setIsStartingChat(false);
+    }
   }
 
   async function handleCommonQuestionSelect(prompt: string) {
@@ -92,7 +125,7 @@ function HomePage() {
               <li key={question}>
                 <button
                   className="w-full py-2.5 text-left text-foreground/80 text-sm transition-colors hover:bg-muted/30 hover:text-foreground sm:text-base"
-                  disabled={startThreadMutation.isPending}
+                  disabled={isStartingChat}
                   onClick={async () => {
                     await handleCommonQuestionSelect(question);
                   }}
@@ -108,7 +141,7 @@ function HomePage() {
       <ChatComposerProvider
         initialModelId={selectedModelId}
         initialProvider={selectedProvider}
-        isSubmitting={startThreadMutation.isPending}
+        isSubmitting={isStartingChat}
         maxHeightPx={280}
         maxLength={16_000}
         onModelChange={handleModelChange}

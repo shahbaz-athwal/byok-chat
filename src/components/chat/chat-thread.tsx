@@ -11,8 +11,11 @@ import { type CSSProperties, useEffect, useRef, useState } from "react";
 import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
 import { AssistantMessageMarkdown } from "@/components/chat/assistant-message-markdown";
 import { ChatMessage, ChatMessageBubble } from "@/components/chat/chat-message";
+import { useDraftThread } from "@/components/draft-thread-provider";
 import { Button } from "@/components/ui/button";
+import { deriveThreadTitle } from "@/lib/thread-drafts";
 import {
+  useActivateDraftAndSendMutation,
   useSendThreadMessageMutation,
   useUpdateThreadModelMutation,
 } from "@/mutations/thread";
@@ -27,6 +30,7 @@ import {
 interface ChatThreadProps {
   modelId: string;
   provider: Provider;
+  status: "active" | "archived" | "draft";
   threadId: string;
 }
 
@@ -117,11 +121,10 @@ function ScrollToBottomButton() {
     >
       <Button
         aria-label="Scroll to latest message"
-        className="pointer-events-auto rounded-full shadow-lg"
-        onClick={() => scrollToBottom()}
+        className="pointer-events-auto rounded-full"
+        onClick={() => scrollToBottom({ animation: "instant" })}
         size="icon"
         type="button"
-        variant="secondary"
       >
         <ArrowDownIcon />
       </Button>
@@ -129,7 +132,14 @@ function ScrollToBottomButton() {
   );
 }
 
-export function ChatThread({ threadId, provider, modelId }: ChatThreadProps) {
+export function ChatThread({
+  threadId,
+  provider,
+  modelId,
+  status,
+}: ChatThreadProps) {
+  const { consumeDraftThreadId } = useDraftThread();
+  const activateDraftAndSendMutation = useActivateDraftAndSendMutation();
   const sendMessageMutation = useSendThreadMessageMutation();
   const updateModelMutation = useUpdateThreadModelMutation();
   const { data } = useSuspenseQuery(threadMessagesQuery(threadId));
@@ -156,8 +166,33 @@ export function ChatThread({ threadId, provider, modelId }: ChatThreadProps) {
   const isAssistantStreaming =
     lastMessage?.role === "assistant" &&
     (lastMessage.status === "pending" || lastMessage.status === "streaming");
+  const hasSettledMessages = results.some(
+    (message) => message.status !== "pending"
+  );
+  const isInitialPromptPending =
+    results.some(
+      (message) => message.role === "user" && message.status === "pending"
+    ) && !hasSettledMessages;
 
-  async function handleSubmit({ prompt }: ChatComposerSubmitPayload) {
+  async function handleSubmit({
+    prompt,
+    provider: selectedProvider,
+    modelId: selectedModelId,
+  }: ChatComposerSubmitPayload) {
+    if (status === "draft") {
+      const title = deriveThreadTitle(prompt);
+
+      await activateDraftAndSendMutation.mutateAsync({
+        modelId: selectedModelId,
+        prompt,
+        provider: selectedProvider,
+        threadId,
+        title,
+      });
+      consumeDraftThreadId(threadId);
+      return;
+    }
+
     await sendMessageMutation.mutateAsync({ prompt, threadId });
   }
 
@@ -208,7 +243,7 @@ export function ChatThread({ threadId, provider, modelId }: ChatThreadProps) {
       <StickToBottom
         className="relative min-h-0 flex-1"
         initial="instant"
-        resize="smooth"
+        resize="instant"
       >
         <StickToBottom.Content
           className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-4 pb-[calc(var(--chat-composer-height)+1rem)] sm:px-6"
@@ -241,7 +276,11 @@ export function ChatThread({ threadId, provider, modelId }: ChatThreadProps) {
             initialProvider={provider}
             isAssistantStreaming={isAssistantStreaming}
             isModelUpdating={updateModelMutation.isPending}
-            isSubmitting={sendMessageMutation.isPending}
+            isSubmitting={
+              sendMessageMutation.isPending ||
+              activateDraftAndSendMutation.isPending ||
+              isInitialPromptPending
+            }
             onModelChange={handleModelChange}
             onSubmit={handleSubmit}
           >

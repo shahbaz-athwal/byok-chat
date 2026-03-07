@@ -100,7 +100,9 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                         />
                       )}
                     >
-                      {chat.title ?? "Untitled chat"}
+                      <span className="min-w-0 truncate">
+                        {chat.title ?? "Untitled chat"}
+                      </span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}

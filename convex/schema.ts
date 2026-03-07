@@ -17,13 +17,14 @@ export const schema = defineSchema({
   threadConfig: defineTable({
     title: v.optional(v.string()),
     userId: v.string(),
-    status: literals("active", "archived"),
+    status: literals("draft", "active", "archived"),
     threadId: v.string(),
     provider: vProvider,
     modelId: v.string(),
   })
     .index("by_threadId", ["threadId"])
-    .index("by_userId", ["userId"]),
+    .index("by_userId", ["userId"])
+    .index("by_userId_status", ["userId", "status"]),
 });
 
 export const vv = typedV(schema);

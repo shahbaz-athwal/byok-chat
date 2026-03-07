@@ -1,7 +1,11 @@
 import { createThread } from "@convex-dev/agent";
 import { ConvexError, v } from "convex/values";
 import { getOneFromOrThrow } from "convex-helpers/server/relationships";
-import { resolveRequestedModelOrThrow } from "../shared/chat-models";
+import {
+  DEFAULT_MODEL_BY_PROVIDER,
+  DEFAULT_PROVIDER,
+  resolveRequestedModelOrThrow,
+} from "../shared/chat-models";
 import { components } from "./_generated/api";
 import {
   type MutationCtx,
@@ -31,33 +35,80 @@ export async function getOwnedThreadContextOrThrow(
 
   return thread;
 }
-export const start = mutation({
-  args: {
-    prompt: v.string(),
-    provider: vProvider,
-    modelId: v.string(),
-  },
-  handler: async (ctx, { prompt, provider, modelId }) => {
+
+async function getDraftThreadForUser(
+  ctx: QueryCtx | MutationCtx,
+  userId: string
+) {
+  return await ctx.db
+    .query("threadConfig")
+    .withIndex("by_userId_status", (q) =>
+      q.eq("userId", userId).eq("status", "draft")
+    )
+    .order("desc")
+    .first();
+}
+
+export const ensureDraft = mutation({
+  args: {},
+  handler: async (ctx) => {
     const { userId } = await requireAuth(ctx);
-    resolveRequestedModelOrThrow(provider, modelId);
+    const existingDraft = await getDraftThreadForUser(ctx, userId);
+
+    if (existingDraft) {
+      return { threadId: existingDraft.threadId };
+    }
 
     const threadId = await createThread(ctx, components.agent, { userId });
 
     await ctx.db.insert("threadConfig", {
-      modelId,
-      status: "active",
+      modelId: DEFAULT_MODEL_BY_PROVIDER[DEFAULT_PROVIDER],
+      status: "draft",
       userId,
       threadId,
-      provider,
+      provider: DEFAULT_PROVIDER,
     });
 
-    await queuePromptGeneration(ctx, {
+    return { threadId };
+  },
+});
+
+export const activateDraftAndSend = mutation({
+  args: {
+    threadId: v.string(),
+    prompt: v.string(),
+    provider: vProvider,
+    modelId: v.string(),
+    title: v.string(),
+  },
+  handler: async (ctx, { threadId, prompt, provider, modelId, title }) => {
+    const { userId } = await requireAuth(ctx);
+    resolveRequestedModelOrThrow(provider, modelId);
+
+    const thread = await getOwnedThreadContextOrThrow(ctx, threadId);
+    if (thread.status !== "draft") {
+      throw new ConvexError("Thread is already active");
+    }
+
+    await ctx.db.patch(thread._id, {
       modelId,
-      prompt,
       provider,
-      threadId,
-      userId,
+      status: "active",
+      title,
     });
+    await Promise.all([
+      ctx.runMutation(components.agent.threads.updateThread, {
+        patch: { title },
+        threadId,
+      }),
+      queuePromptGeneration(ctx, {
+        modelId,
+        prompt,
+        provider,
+        threadId,
+        userId,
+      }),
+    ]);
 
     return { threadId };
   },
@@ -69,7 +120,9 @@ export const list = query({
     const { userId } = await requireAuth(ctx);
     return await ctx.db
       .query("threadConfig")
-      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .withIndex("by_userId_status", (q) =>
+        q.eq("userId", userId).eq("status", "active")
+      )
       .order("desc")
       .collect();
   },

@@ -1,6 +1,7 @@
 import { useConvexMutation } from "@convex-dev/react-query";
 import { useMutation } from "@tanstack/react-query";
 import { toastManager } from "@/components/ui/toast";
+import { applyActivateDraftOptimisticUpdate } from "@/lib/thread-drafts";
 import { api } from "../../convex/_generated/api";
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -19,9 +20,36 @@ function showMutationErrorToast(
   });
 }
 
-export function useStartThreadMutation() {
+export interface EnsureDraftMutationOptions {
+  showErrorToast?: boolean;
+}
+
+export function useEnsureDraftMutation(options?: EnsureDraftMutationOptions) {
   return useMutation({
-    mutationFn: useConvexMutation(api.threads.start),
+    mutationFn: useConvexMutation(api.threads.ensureDraft),
+    onError: (error) => {
+      if (options?.showErrorToast === false) {
+        return;
+      }
+
+      showMutationErrorToast(
+        "Failed to prepare chat",
+        error,
+        "Could not prepare chat"
+      );
+    },
+  });
+}
+
+export function useActivateDraftAndSendMutation() {
+  const activateDraftAndSendMutation = useConvexMutation(
+    api.threads.activateDraftAndSend
+  ).withOptimisticUpdate((localStore, args) => {
+    applyActivateDraftOptimisticUpdate(localStore, args);
+  });
+
+  return useMutation({
+    mutationFn: activateDraftAndSendMutation,
     onError: (error) => {
       showMutationErrorToast(
         "Failed to start chat",

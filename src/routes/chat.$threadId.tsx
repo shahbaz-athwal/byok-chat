@@ -43,6 +43,7 @@ function ChatPage() {
     <ChatThread
       modelId={chat.modelId}
       provider={chat.provider}
+      status={chat.status}
       threadId={threadId}
     />
   );

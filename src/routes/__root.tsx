@@ -6,6 +6,7 @@ import {
 } from "@tanstack/react-router";
 import { ApiKeySettingsProvider } from "@/components/api-key-settings-provider";
 import { AppSidebar } from "@/components/app-sidebar";
+import { DraftThreadProvider } from "@/components/draft-thread-provider";
 import {
   SidebarInset,
   SidebarProvider,
@@ -56,13 +57,15 @@ function RootComponent() {
 
   return (
     <ApiKeySettingsProvider>
-      <SidebarProvider>
-        <AppSidebar />
-        <SidebarInset className="h-svh min-h-0 overflow-hidden">
-          <SidebarTrigger className="absolute top-2 left-2 z-30" />
-          <Outlet />
-        </SidebarInset>
-      </SidebarProvider>
+      <DraftThreadProvider>
+        <SidebarProvider>
+          <AppSidebar />
+          <SidebarInset className="h-svh min-h-0 overflow-hidden">
+            <SidebarTrigger className="absolute top-2 left-2 z-30" />
+            <Outlet />
+          </SidebarInset>
+        </SidebarProvider>
+      </DraftThreadProvider>
     </ApiKeySettingsProvider>
   );
 }
