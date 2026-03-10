@@ -27,7 +27,7 @@ export const Route = createFileRoute("/")({
   component: HomePage,
 });
 
-function HomePage() {
+export function HomePage() {
   const { configuredProviders, openSettings } = useApiKeySettings();
   const { consumeDraftThreadId, ensureDraftThreadId } = useDraftThread();
   const navigate = Route.useNavigate();
